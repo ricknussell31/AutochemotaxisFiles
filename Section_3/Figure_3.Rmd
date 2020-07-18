@@ -20,6 +20,10 @@ import Methods.Deposition as DM
 # %matplotlib notebook
 ```
 
+# Figure 3 
+
+This code displays the various deposition functions that we utilize during our numerical experiments. 
+
 ```{python}
 plt.figure(figsize=(7,5),tight_layout=True)
 c = np.linspace(0,.3,100)
