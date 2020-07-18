@@ -128,5 +128,5 @@ dmypy.json
 # Pyre type checker
 .pyre/
 
-#ignore RMD files
-.rmd/
+#ignore jupyter noteboook
+*.ipynb
