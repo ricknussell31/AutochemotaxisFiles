@@ -1,0 +1,42 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.4.2
+  kernelspec:
+    display_name: Python [Root]
+    language: python
+    name: Python [Root]
+---
+
+```{python}
+from scipy import *
+import numpy as np
+import matplotlib.pyplot as plt
+import Methods.Deposition as DM
+# %matplotlib notebook
+```
+
+```{python}
+plt.figure(figsize=(7,5),tight_layout=True)
+c = np.linspace(0,.3,100)
+const = DM.constantDep(c,.01,.15,.013)
+atanDep = DM.atanDep2(c,.01,.15,.013)
+linAtanDep = DM.linAtanDep2(c,.01,.15,.013)
+
+plt.plot(c,const,color = '#000000', linestyle='--',linewidth = 4,label=r'$f_1(c)$')
+plt.plot(c,atanDep,color = '#009E73', linestyle='-',linewidth = 3,label=r'$f_2(c)$')
+plt.plot(c,linAtanDep,color = '#D55E00', linestyle=':',linewidth = 5,label=r'$f_3(c)$')
+
+plt.xticks([0,0.15],[r'$0$',r'$c_0$'],fontsize=30)
+plt.yticks([0.01],[r'$\gamma$'],fontsize=30)
+plt.legend(loc=5)
+plt.ylabel(r'$f(c)$: Deposition Function',fontsize=19)
+plt.xlabel(r'Chemical Concentration, $c$',fontsize=19)
+plt.title(r'Deposition Functions',fontsize=19)
+plt.savefig('Figure_3')
+plt.show()
+```
