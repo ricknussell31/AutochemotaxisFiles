@@ -39,12 +39,12 @@ We explore different ways to visualize this.
 
 ## Figure 4a
 
-This calculates the function $R(k)$ with varied $k$ and $d_1$, while keeping $d_2$ constant. Note the asymptote at $R(k) = -1/2$ as $k \to \infty$.
+This calculates the function $R(k)$ with varied $k$ and $d_1$, while keeping $d_2$ constant. Note the asymptote at $R(k) = -1/2$ as $k \to \infty$. 
 
 ```{python}
 plt.figure(figsize=(7.6,5.4),tight_layout=True)
 d1Array = [0.4,0.8,1.2,1.6,2] #Values of d1 to be simulated (diffusion constant)
-colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000']
+colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000'] #Using IBM Colorblind Scheme 
 markers = ['o','p','s','^','D']
 
 c = 0.12 #Constant chemical solution
@@ -83,7 +83,7 @@ plt.ylim(-1,0.5)
 plt.tick_params(labelsize=18)
 plt.yticks([-1,-0.5,0,0.5])
 plt.show()
-plt.savefig('Figure_4a')
+plt.savefig('./Images/Figure_4a')
 ```
 
 ## Figure 4b
@@ -93,7 +93,7 @@ This calculates the function $R(k)$ with varied $k$ and $d_2$, while keeping $d_
 ```{python}
 plt.figure(figsize=(7.6,5.4),tight_layout=True)
 d2Array = [0.4,0.8,1.2,1.6,2] #Values of d2 to be simulated (decay constant)
-colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000']
+colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000'] #Using IBM Colorblind Scheme 
 markers = ['o','p','s','^','D']
 
 c = 0.12 #Constant chemical solution
@@ -133,7 +133,7 @@ plt.ylim(-1,0.5)
 plt.yticks([-1,-0.5,0,0.5])
 plt.tick_params(labelsize=18)
 plt.show()
-plt.savefig('Figure_4b')
+plt.savefig('./Images/Figure_4b')
 ```
 
 ## Figure 4c
@@ -196,7 +196,7 @@ ax.set_title('Stability Regions for $\ell = {0}$, $\delta = {1}$'.format(L,delta
 ax.text(.22,.62,'Unstable',color='White',fontsize=25)
 ax.text(.62,.2,'Stable',color='Black',fontsize=25)
 
-plt.savefig('Figure_4c')
+plt.savefig('./Images/Figure_4c')
 ```
 
 ## Figure 4d
@@ -206,7 +206,7 @@ In the same spirit as 4c, Figure 4d now uses all the same parameters but utilize
 ```{python}
 d1Array = np.linspace(0,1,250) #Values for d1, the diffusion parameter
 d2Array = np.linspace(0,1,250) #Values for d2, the decay parameter
-stableMat = np.zeros((len(d1Array),len(d2Array))) #Matrix with most unstable wave number
+stableMat2 = np.zeros((len(d1Array),len(d2Array))) #Matrix with most unstable wave number
 
 c = 0.12 #Chemical steady state
 fp = (DM.atanDep2(c+0.0001,0.01,0.05,.03) - DM.atanDep2(c-0.0001,0.01,0.05,.03))/(2*(0.0001)) #Approximate f'(c)
@@ -232,15 +232,16 @@ for i in range(len(d1Array)):
             for m in range(0, 3): #Find maximal real root
                 if (CubicRoots[m].real > max0):
                     max0 = CubicRoots[m].real
-                    stableMat[i,j] = k
+                    stableMat2[i,j] = k
 ```
 
 ```{python}
+delta = 0.012
 StableLine = [] #Find border between unstable regions
 for i in range(len(d1Array)):
     MM = 0
     for j in range(len(d2Array)):
-        if (stableMat[i,j] > L/(2*pi) and MM==0): #Given d_1, find first d2 such that the system is unstable
+        if (stableMat2[i,j] > L/(2*pi) and MM==0): #Given d_1, find first d2 such that the system is unstable
             StableLine.append(d2Array[j])
             MM=1
             
@@ -256,5 +257,9 @@ ax.set_title('Stability Regions for $\ell = {0}$, $\delta = {1}$'.format(L,delta
 ax.text(.1,.8,'Unstable',color='White',fontsize=25)
 ax.text(.6,.4,'Stable',color='Black',fontsize=25)
 
-#plt.savefig('Figure_4d')
+plt.savefig('./Images/Figure_4d')
+```
+
+```{python}
+
 ```
