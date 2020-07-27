@@ -143,10 +143,10 @@ class PlankChem(Background_Field):
         # Second Order Method 
         # Perturb the constant solutions 
 
-        cn = ck + 0.000016*cos(self.LP*self.CC*self.xm) #+ .0001*cos(self.CC*self.xm)
-        pn = pk - 0.000009*cos(self.LP*self.CC*self.xm) #+ .0001*cos(self.CC*self.xm)
-        #cn = ck
-        #pn = pk
+        #cn = ck + 0.000016*cos(self.LP*self.CC*self.xm) #+ .0001*cos(self.CC*self.xm)
+        #pn = pk - 0.000009*cos(self.LP*self.CC*self.xm) #+ .0001*cos(self.CC*self.xm)
+        cn = ck
+        pn = pk
         totalc, totalp = self.totals(cn,pn)
         
         return(cn,pn,totalc,totalp)
@@ -276,13 +276,14 @@ class PlankChem(Background_Field):
             d2 = self.d2        
             p = d2*c0/f0
             fp = (f1 - f2)/(2*0.0001)
-            d4 = p*fp - d2
+            d3 = p*fp - d2
             
             for f in range(0,len(wave)):
                 k = wave[f]
-                c1 = self.d1*k**2 - d4 + 1
-                c2 = (self.d1 + 1)*k**2 - d4
-                c3 = k**2*(self.d1*k**2 - d4 - c0*d2/self.delta)
+                c1 = self.d1*k**2 - d3 + 1
+                c2 = (self.d1 + 1)*k**2 - d3
+                c3 = (k**2)*(self.d1*k**2 - d3 - c0*d2/self.delta) #constant term
+
                 coeff = [1,c1,c2,c3]
                 roots = np.roots(coeff)
                 for m in range(0, len(roots)):
@@ -290,7 +291,7 @@ class PlankChem(Background_Field):
                     if (roo.real > max0):
                         max0=roo.real
                         stable = k
-            if (stable >= 1/(self.CC)):
+            if (stable >= (self.CC)):
                 print('These parameters make the system unstable. Most Unstable Wave Number: {0}'.format(round(stable,3)))
             else:
                 print('These parameters make the system stable.')
