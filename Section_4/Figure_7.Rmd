@@ -69,6 +69,7 @@ for k in range(len(deltas)):
 
 ```{python}
 deltas = np.array([0,.02,.04,.06])
+k = 1
 Swimmers = PM.PlankChem(depFcn=DM.constantDep,left=0,right=5,d1=1,d2=2,N=301,
                             dt=0.004,depMaxStr=0.01, depThreshold=0.05, depTransWidth=0.03, delta = deltas[k])
 TotalTime = int(200/Swimmers.dt) #Total number of iterations for the experiment
@@ -79,6 +80,8 @@ Swimmers.CheckStability(c0) #checks the stability of the system and outputs the 
 
 ```{python}
 # %matplotlib notebook
+params = {'legend.fontsize': 15}
+plt.rcParams.update(params)
 
 fig, ax1 = plt.subplots(tight_layout=True)
 colors = ['#D55E00','#000000','#882255','#009E73']

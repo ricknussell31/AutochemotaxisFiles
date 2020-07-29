@@ -46,6 +46,8 @@ plt.figure(figsize=(7.6,5.4),tight_layout=True)
 d1Array = [0.4,0.8,1.2,1.6,2] #Values of d1 to be simulated (diffusion constant)
 colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000'] #Using IBM Colorblind Scheme 
 markers = ['o','p','s','^','D']
+params = {'legend.fontsize': 15,'legend.framealpha':1}
+plt.rcParams.update(params)
 
 c = 0.12 #Constant chemical solution
 d2 = 1 #Decay constant
@@ -74,7 +76,7 @@ for i in range(len(d1Array)):
     i = i + 1
 plt.plot(wave, np.zeros(len(wave)),color='black',linewidth=2) #Plot R(k) = 0
 plt.plot(wave, np.zeros(len(wave))-1/2,color='black',linestyle='--',linewidth=2) #Plot R(k) = -1/2, the asymptote
-plt.xlabel(r'Wave Number, $k$',fontsize=20)
+plt.xlabel(r'$k$',fontsize=28)
 plt.ylabel(r'$R(k)$',fontsize=28,labelpad=-10)
 plt.title(r'Maximal Real Part of Roots: $d_2 = 1$', fontsize=20)
 plt.legend(loc=0)
@@ -95,6 +97,7 @@ plt.figure(figsize=(7.6,5.4),tight_layout=True)
 d2Array = [0.4,0.8,1.2,1.6,2] #Values of d2 to be simulated (decay constant)
 colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000'] #Using IBM Colorblind Scheme 
 markers = ['o','p','s','^','D']
+params = {'legend.fontsize': 15,'legend.framealpha':1}
 
 c = 0.12 #Constant chemical solution
 d1 = 1 #Diffusion constant
@@ -124,7 +127,7 @@ for i in range(len(d2Array)):
     i = i + 1
 plt.plot(wave, np.zeros(len(wave)),color='black',linewidth=2) #Plot R(k) = 0
 plt.plot(wave, np.zeros(len(wave))-1/2,color='black',linestyle='--',linewidth=2) #Plot R(k) = -1/2, the asymptote
-plt.xlabel(r'Wave Number, $k$',fontsize=20)
+plt.xlabel(r'$k$',fontsize=28)
 plt.ylabel(r'$R(k)$',fontsize=28,labelpad=-10)
 plt.title(r'Maximal Real Part of Roots: $d_1 = 1$', fontsize=20)
 plt.legend(loc=0)
@@ -212,7 +215,7 @@ fp = (DM.atanDep(c+0.0001,0.01,0.05,.03) - DM.atanDep(c-0.0001,0.01,0.05,.03))/(
 delta = 0.012 #Run-and-Tumble parameter
 
 L = 6 #Length of Domain to test stability
-wave = np.linspace(0,L/5,100) #Wave numbers to test (need end point to be greater than L/(2*pi))
+wave = np.linspace(0,(2*pi+1)/L,150) #Wave numbers to test (need end point to be greater than (2*pi)/L)
 
 for i in range(len(d1Array)):
     for j in range(len(d2Array)):
@@ -256,5 +259,9 @@ ax.set_title('Stability Regions for $\ell = {0}$, $\delta = {1}$'.format(L,delta
 ax.text(.05,.8,'Unstable',color='White',fontsize=25)
 ax.text(.5,.4,'Stable',color='Black',fontsize=25)
 
-#plt.savefig('../Final_Figures/Figure_4d')
+plt.savefig('../Final_Figures/Figure_4d')
+```
+
+```{python}
+
 ```
