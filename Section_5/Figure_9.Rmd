@@ -1,0 +1,565 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.4.2
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```{python}
+from scipy import *
+import numpy as np
+import matplotlib.pyplot as plt
+import PlanktonSignaling.basics as PS
+import PlanktonSignaling.Deposition as DP
+import profile
+import copy
+from numpy.fft import fftfreq, fftshift, fft2
+# %matplotlib notebook
+
+# #%load_ext Cython
+```
+
+# Figure 9
+
+This will show the evolution of a 2D simulation. We have the data provided already for you in the Data files to use. The code to produce those files is shown below. The simulation will take over 7 hours, so we sugest utilizing an HPC to replicate these.
+
+```{python}
+meshsize = 400 #Chemical Mesh size
+numb = 400**2 #Number of plankton in simulation
+LL = 10 #Length of domain [0,L] x [0,L]
+dt = 0.02 #Time-stepping size
+TotalTime = 20 #Total time 
+simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
+
+Swimmers = PS.Plankton(DP.constantDep,d1=.1,d2=4,N = meshsize,depMaxStr=.01,
+                           Const=3,L=LL,k=dt,epsilon=1e-3,depThreshold=0.012, 
+                           depTransWidth=0.008, num = numb, c0=0.01)
+Swimmers.CheckStability()
+```
+
+```{python}
+Swimmers.SetIC(initial_conditions)
+
+lenn = int(np.sqrt(numb))
+pos = np.zeros((1,2))
+vel = np.zeros((1,2))
+
+#Place plankton down uniformly throughout the domain and give each a direction to travel initially
+for l in range(0,lenn):
+        for k in range(0,lenn):
+                pos = np.append(pos,[np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
+                        np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])],axis=0)
+                th  = rand()*2*pi
+                vel = np.append(vel,[np.array([np.cos(th),np.sin(th)])],axis=0)
+
+pos = np.delete(pos,0,0)
+vel = np.delete(vel,0,0)
+pos_store = list([pos[:,:]])
+pos_store = list([np.array(pos)])
+scalar_store = list([Swimmers.Meshed()])
+
+CHEM = np.zeros((simTime,meshsize,meshsize))
+POS = np.zeros((simTime,numb,2))
+CHEM[0,:,:] = scalar_store[0] #preallocate the chemical 
+POS[0,:,:] = pos_store[0] #preallocate the 
+```
+
+```{python}
+for k in range(1,simTime+1):
+        Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
+        CHEM[k,:,:] = Swimmers.Meshed()
+        POS[k,:,:] = pos
+np.save('./Data/Pos_C.npy',POS)
+np.save('./Data/Chem_C.npy',CHEM)
+```
+
+```{python}
+#POS = np.load('./Data/Pos_C.npy')
+CHEM = np.load('./Data/Chem_C.npy')
+```
+
+### Plot the figure
+
+Make sure to run the function below.
+
+```{python}
+def particleProjectionFaster(pos,meshsize):
+    
+    x = r_[0:Swimmers.L:1j*meshsize] # setup the spatial mesh. It is a long row vector
+    # Create some local coordinates for the square domain.
+    y = 1*x
+    xm,ym = np.meshgrid(x,y)
+    f = np.zeros((meshsize,meshsize))
+    Std = Swimmers.depVar
+
+    boundaryCutoff = 64*Std
+    
+    intDelta = int((meshsize)*8*np.sqrt(Std)/Swimmers.L + 0.5)
+    
+    for i in range(0,Swimmers.num):
+        A, B, C, D = 0,0,0,0
+        p = pos[i,:]
+        
+        centerX = int((meshsize-1)*p[0]/Swimmers.L+0.5)
+        centerY = int((meshsize-1)*p[1]/Swimmers.L+0.5)
+        
+        lowerX      = max(0,centerX-intDelta)
+        lowerXplus  = max(0,centerX-intDelta + (meshsize-1))
+        lowerXminus = max(0,centerX-intDelta - (meshsize-1))
+        upperX      = min(meshsize,centerX+intDelta)
+        upperXplus  = min(meshsize,centerX+intDelta + (meshsize-1))
+        upperXminus = min(meshsize,centerX+intDelta - (meshsize-1))
+        lowerY      = max(0,centerY-intDelta)
+        lowerYplus  = max(0,centerY-intDelta + (meshsize-1))
+        lowerYminus = max(0,centerY-intDelta - (meshsize-1))
+        upperY      = min(meshsize,centerY+intDelta)
+        upperYplus  = min(meshsize,centerY+intDelta + (meshsize-1))
+        upperYminus = min(meshsize,centerY+intDelta - (meshsize-1))
+        
+        sliceX = slice(lowerX,upperX+1)
+        sliceY = slice(lowerY,upperY+1)
+        
+        f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
+        if ((p[0])**2<boundaryCutoff):
+            sliceX = slice(lowerXplus,upperXplus+1)
+            sliceY = slice(lowerY,upperY+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
+            A = 1
+        if ((p[0]-Swimmers.L)**2<boundaryCutoff):
+            sliceX = slice(lowerXminus,upperXminus+1)
+            sliceY = slice(lowerY,upperY+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
+            B = 1
+        if ((p[1])**2<boundaryCutoff):
+            sliceX = slice(lowerX,upperX+1)
+            sliceY = slice(lowerYplus,upperYplus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
+            C = 1
+        if ((p[1]-Swimmers.L)**2<boundaryCutoff):
+            sliceX = slice(lowerX,upperX+1)
+            sliceY = slice(lowerYminus,upperYminus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
+            D = 1
+        if (A == 1 and C == 1): #Plankton in Lower Left Corner
+            sliceX = slice(lowerXplus,upperXplus+1)
+            sliceY = slice(lowerYplus,upperYplus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
+        if (A == 1 and D == 1): #Plankton in Lower Left Corner
+            sliceX = slice(lowerXplus,upperXplus+1)
+            sliceY = slice(lowerYminus,upperYminus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
+        if (B == 1 and C == 1): #Plankton in Upper Right Corner
+            sliceX = slice(lowerXminus,upperXminus+1)
+            sliceY = slice(lowerYplus,upperYplus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
+        if (B == 1 and D == 1): #Plankton in Lower Right Corner
+            sliceX = slice(lowerXminus,upperXminus+1)
+            sliceY = slice(lowerYminus,upperYminus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
+    return xm,ym,f*(Swimmers.density*Swimmers.L**2/Swimmers.num)
+
+def BuildPeriodic(Mat):
+    mgf                   = copy.deepcopy(Mat)
+    s                     = mgf.reshape((Swimmers.N,Swimmers.N))
+    sp                    = Swimmers.scalar_periodic.reshape((Swimmers.N+1,Swimmers.N+1))
+    sp[0:Swimmers.N,0:Swimmers.N] = s[:,:]
+    sp[Swimmers.N,0:Swimmers.N]   = sp[0,0:Swimmers.N]
+    sp[0:Swimmers.N,Swimmers.N]   = sp[0:Swimmers.N,0]
+    sp[Swimmers.N,Swimmers.N]     = sp[0,0]
+    sp  = sp.reshape(((Swimmers.N+1),(Swimmers.N+1)))
+    return(mgf)
+```
+
+```{python}
+fig, axs = plt.subplots(nrows=3, ncols=5,figsize=(32,18),sharey='row')
+Times = [0,.2,3,8,20]
+fig.subplots_adjust(right=1)
+fig.subplots_adjust(hspace=0.22, wspace=0.13)
+#Plot Plankton
+j = int(Times[0]/Swimmers.k)
+xm, ym, ContoursSlice = particleProjectionFaster(POS[j],400)
+
+cs1 = axs[0,0].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
+cs1.set_clim(3,5)
+axs[0,0].ticklabel_format(style='plain',axis='x')
+axs[0,0].locator_params(nbins=3,axis='x')
+axs[0,0].locator_params(nbins=3,axis='y')
+axs[0,0].tick_params(labelsize=22)
+axs[0,0].set_ylabel(r'$y$',size=27)
+axs[0,0].set_xlabel(r'$x$',size=27)
+
+j = int(Times[1]/Swimmers.k)
+xm, ym, ContoursSlice = particleProjectionFaster(POS[j],400)
+cs1 = axs[0,1].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
+cs1.set_clim(3,5)
+axs[0,1].ticklabel_format(style='plain',axis='x')
+axs[0,1].locator_params(nbins=3,axis='x')
+axs[0,1].locator_params(nbins=3,axis='y')
+axs[0,1].tick_params(labelsize=22)
+axs[0,1].set_xlabel(r'$x$',size=27)
+
+j = int(Times[2]/Swimmers.k)
+xm, ym, ContoursSlice = particleProjectionFaster(POS[j],400)
+cs1 = axs[0,2].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
+cs1.set_clim(3,5)
+axs[0,2].ticklabel_format(style='plain',axis='x')
+axs[0,2].locator_params(nbins=3,axis='x')
+axs[0,2].locator_params(nbins=3,axis='y')
+axs[0,2].tick_params(labelsize=22)
+axs[0,2].set_xlabel(r'$x$',size=27)
+
+j = int(Times[3]/Swimmers.k)
+xm, ym, ContoursSlice = particleProjectionFaster(POS[j],400)
+cs1 = axs[0,3].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
+cs1.set_clim(3,5)
+axs[0,3].ticklabel_format(style='plain',axis='x')
+axs[0,3].locator_params(nbins=3,axis='x')
+axs[0,3].locator_params(nbins=3,axis='y')
+axs[0,3].tick_params(labelsize=22)
+axs[0,3].set_xlabel(r'$x$',size=27)
+
+j = int(Times[4]/Swimmers.k)
+xm, ym, ContoursSlice = particleProjectionFaster(POS[j],400)
+cs1 = axs[0,4].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
+cs1.set_clim(3,5)
+axs[0,4].ticklabel_format(style='plain',axis='x')
+axs[0,4].locator_params(nbins=3,axis='x')
+axs[0,4].locator_params(nbins=3,axis='y')
+axs[0,4].tick_params(labelsize=22)
+axs[0,4].set_xlabel(r'$x$',size=27)
+
+cbar2 = fig.colorbar(cs1,ticks = [3,4,5],
+                    ax=axs[0].ravel().tolist(),location='right',pad=0.01,shrink=0.8)
+cbar2.update_ticks()
+cbar2.ax.tick_params(labelsize=25)
+cbar2.set_label(r'Plankton, $\rho$',size=30)
+cbar2.ax.set_yticklabels([r'$3\overline{\rho}/4$',r'$\overline{\rho}$',r'$5\overline{\rho}/4$'])
+
+#Plot Chemical
+
+L = 0.0025
+j = int(Times[0]/Swimmers.k)
+cs1 = axs[1,0].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,BuildPeriodic(CHEM[j]),cmap='Blues')
+cs1.set_clim(0.01-L,0.01+L)
+axs[1,0].ticklabel_format(style='plain',axis='x')
+axs[0,0].set_title(r'$t = {0}$',fontsize=40)
+axs[1,0].locator_params(nbins=3,axis='x')
+axs[1,0].locator_params(nbins=3,axis='y')
+axs[1,0].tick_params(labelsize=22)
+axs[1,0].set_ylabel(r'$y$',size=27)
+axs[1,0].set_xlabel(r'$x$',size=27)
+
+j = int(Times[1]/Swimmers.k)
+cs = axs[1,1].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,BuildPeriodic(CHEM[j]),cmap='Blues')
+cs.set_clim(0.01-L,0.01+L)
+axs[1,1].ticklabel_format(style='plain',axis='x')
+axs[0,1].set_title(r'$t = {0}$'.format(round(j*Swimmers.k,3)),fontsize=40)
+axs[1,1].locator_params(nbins=3,axis='x')
+axs[1,1].locator_params(nbins=3,axis='y')
+axs[1,1].tick_params(labelsize=22)
+axs[1,1].set_xlabel(r'$x$',size=27)
+
+j = int(Times[2]/Swimmers.k)
+cs = axs[1,2].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,BuildPeriodic(CHEM[j]),cmap='Blues')
+cs.set_clim(0.01-L,0.01+L)
+axs[1,2].ticklabel_format(style='plain',axis='x')
+axs[0,2].set_title(r'$t = {0}$'.format(round(j*Swimmers.k)),fontsize=40)
+axs[1,2].locator_params(nbins=3,axis='x')
+axs[1,2].locator_params(nbins=3,axis='y')
+axs[1,2].tick_params(labelsize=22)
+axs[1,2].set_xlabel(r'$x$',size=27)
+
+j = int(Times[3]/Swimmers.k)
+cs = axs[1,3].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,BuildPeriodic(CHEM[j]),cmap='Blues')
+cs.set_clim(0.01-L,0.01+L)
+axs[1,3].ticklabel_format(style='plain',axis='x')
+axs[0,3].set_title(r'$t = {0}$'.format(round(j*Swimmers.k)),fontsize=40)
+axs[1,3].locator_params(nbins=3,axis='x')
+axs[1,3].locator_params(nbins=3,axis='y')
+axs[1,3].tick_params(labelsize=22)
+axs[1,3].set_xlabel(r'$x$',size=27)
+
+j = int(Times[4]/Swimmers.k)
+cs2 = axs[1,4].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,BuildPeriodic(CHEM[j]),cmap='Blues')
+cs2.set_clim(0.01-L,0.01+L)
+axs[1,4].ticklabel_format(style='plain',axis='x')
+axs[0,4].set_title(r'$t = {0}$'.format(round(j*Swimmers.k)),fontsize=40)
+axs[1,4].locator_params(nbins=3,axis='x')
+axs[1,4].locator_params(nbins=3,axis='y')
+axs[1,4].tick_params(labelsize=22)
+axs[1,4].set_xlabel(r'$x$',size=27)
+
+cbar = fig.colorbar(cs2,ticks = [0.008,0.01,0.012],
+                    ax=axs[1].ravel().tolist(),location='right',pad=0.01,shrink=0.8)
+cbar.set_ticks([0.008,0.01,0.012])
+cbar.update_ticks()
+cbar.ax.tick_params(labelsize=25)
+cbar.ax.set_yticklabels([r'$4\overline{c}/5$',r'$\overline{c}$',r'$6\overline{c}/5$'])
+cbar.set_label(r'Chemical, $c$',size=30)
+plt.show()
+
+#Plot Fourier Domaindef xy(r,phi):
+def xy(r,phi):
+    return r*np.cos(phi), r*np.sin(phi)
+
+phis=np.arange(0,6.28,0.01)
+
+#Input the norm of the most unstable wave number using the stability code
+r = 6.096
+
+freq = (len(Swimmers.xm)*2*pi/(Swimmers.L))*fftfreq(len(Swimmers.xm))
+
+j = int(Times[0]/Swimmers.k)
+omega = np.fft.fft2(CHEM[j])
+field = axs[2,0].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq), np.real(np.fft.fftshift(omega)),cmap='Greens')
+flat=np.real(np.fft.fftshift(omega)).flatten()
+flat.sort()
+field.set_clim(0,flat[-1])
+axs[2,0].set_ylim(-15,15)
+axs[2,0].set_xlim(-15,15)
+axs[2,0].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
+axs[2,0].locator_params(nbins=3,axis='x')
+axs[2,0].locator_params(nbins=3,axis='y')
+axs[2,0].tick_params(labelsize=22)
+axs[2,0].set_ylabel(r'$k_2$',size=27,labelpad=-14)
+axs[2,0].set_xlabel(r'$k_1$',size=27)
+
+j = int(Times[1]/Swimmers.k)
+omega = np.fft.fft2(CHEM[j])
+field = axs[2,1].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq), np.real(np.fft.fftshift(omega)),cmap='Greens')
+flat=np.real(np.fft.fftshift(omega)).flatten()
+flat.sort()
+field.set_clim(0,flat[-2])
+axs[2,1].set_ylim(-15,15)
+axs[2,1].set_xlim(-15,15)
+axs[2,1].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
+axs[2,1].locator_params(nbins=3,axis='x')
+axs[2,1].locator_params(nbins=3,axis='y')
+axs[2,1].tick_params(labelsize=22)
+axs[2,1].set_xlabel(r'$k_1$',size=27)
+
+j = int(Times[2]/Swimmers.k)
+omega = np.fft.fft2(CHEM[j])
+field = axs[2,2].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq), np.real(np.fft.fftshift(omega)),cmap='Greens')
+flat=np.real(np.fft.fftshift(omega)).flatten()
+flat.sort()
+field.set_clim(0,flat[-2])
+axs[2,2].set_ylim(-15,15)
+axs[2,2].set_xlim(-15,15)
+axs[2,2].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
+axs[2,2].locator_params(nbins=3,axis='x')
+axs[2,2].locator_params(nbins=3,axis='y')
+axs[2,2].tick_params(labelsize=22)
+axs[2,2].set_xlabel(r'$k_1$',size=27)
+
+j = int(Times[3]/Swimmers.k)
+omega = np.fft.fft2(CHEM[j])
+field = axs[2,3].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq), np.real(np.fft.fftshift(omega)),cmap='Greens')
+flat=np.real(np.fft.fftshift(omega)).flatten()
+flat.sort()
+field.set_clim(0,flat[-2])
+axs[2,3].set_ylim(-15,15)
+axs[2,3].set_xlim(-15,15)
+axs[2,3].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
+axs[2,3].locator_params(nbins=3,axis='x')
+axs[2,3].locator_params(nbins=3,axis='y')
+axs[2,3].tick_params(labelsize=22)
+axs[2,3].set_xlabel(r'$k_1$',size=27)
+
+j = int(Times[4]/Swimmers.k)
+omega = np.fft.fft2(CHEM[j])
+field = axs[2,4].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq),np.real(np.fft.fftshift(omega)),cmap='Greens')
+flat=np.real(np.fft.fftshift(omega)).flatten()
+flat.sort()
+field.set_clim(0,flat[-2])
+axs[2,4].set_ylim(-15,15)
+axs[2,4].set_xlim(-15,15)
+axs[2,4].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
+axs[2,4].locator_params(nbins=3,axis='x')
+axs[2,4].locator_params(nbins=3,axis='y')
+axs[2,4].tick_params(labelsize=22)
+axs[2,4].set_xlabel(r'$k_1$',size=27)
+
+cbar = fig.colorbar(field,ticks = [0,flat[-2]],
+                    ax=axs[2].ravel().tolist(),location='right',pad=0.01,shrink=0.8)
+cbar.set_ticks([0,flat[-2]])
+cbar.update_ticks()
+cbar.ax.tick_params(labelsize=25)
+cbar.ax.set_yticklabels([r'$0$',r'Max'])
+cbar.set_label(r'$\widetilde{E}(\mathbf{k})$',size=32)
+plt.show()
+plt.savefig('../Final_Figures/Fig9')
+```
+
+```{python}
+def PPF(pos,meshsize):
+    
+    x = r_[0:Swimmers.L:1j*meshsize] # setup the spatial mesh. It is a long row vector
+    # Create some local coordinates for the square domain.
+    y = 1*x
+    xm,ym = np.meshgrid(x,y)
+    f = np.zeros((meshsize,meshsize))
+    Std = Swimmers.depVar
+
+    boundaryCutoff = 64*Std
+    
+    intDelta = int((meshsize)*8*np.sqrt(Std)/Swimmers.L + 0.5)
+    
+    for i in range(0,Swimmers.num):
+        A, B, C, D = 0,0,0,0
+        p = pos[i,:]
+        
+        centerX = int((meshsize-1)*p[0]/Swimmers.L+0.5)
+        centerY = int((meshsize-1)*p[1]/Swimmers.L+0.5)
+        
+        lowerX      = max(0,centerX-intDelta)
+        lowerXplus  = max(0,centerX-intDelta + (meshsize-1))
+        lowerXminus = max(0,centerX-intDelta - (meshsize-1))
+        upperX      = min(meshsize,centerX+intDelta)
+        upperXplus  = min(meshsize,centerX+intDelta + (meshsize-1))
+        upperXminus = min(meshsize,centerX+intDelta - (meshsize-1))
+        lowerY      = max(0,centerY-intDelta)
+        lowerYplus  = max(0,centerY-intDelta + (meshsize-1))
+        lowerYminus = max(0,centerY-intDelta - (meshsize-1))
+        upperY      = min(meshsize,centerY+intDelta)
+        upperYplus  = min(meshsize,centerY+intDelta + (meshsize-1))
+        upperYminus = min(meshsize,centerY+intDelta - (meshsize-1))
+        
+        sliceX = slice(lowerX,upperX+1)
+        sliceY = slice(lowerY,upperY+1)
+        
+        f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
+        if ((p[0])**2<boundaryCutoff):
+            sliceX = slice(lowerXplus,upperXplus+1)
+            sliceY = slice(lowerY,upperY+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
+            A = 1
+        if ((p[0]-Swimmers.L)**2<boundaryCutoff):
+            sliceX = slice(lowerXminus,upperXminus+1)
+            sliceY = slice(lowerY,upperY+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
+            B = 1
+        if ((p[1])**2<boundaryCutoff):
+            sliceX = slice(lowerX,upperX+1)
+            sliceY = slice(lowerYplus,upperYplus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
+            C = 1
+        if ((p[1]-Swimmers.L)**2<boundaryCutoff):
+            sliceX = slice(lowerX,upperX+1)
+            sliceY = slice(lowerYminus,upperYminus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
+            D = 1
+        if (A == 1 and C == 1): #Plankton in Lower Left Corner
+            sliceX = slice(lowerXplus,upperXplus+1)
+            sliceY = slice(lowerYplus,upperYplus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
+        if (A == 1 and D == 1): #Plankton in Lower Left Corner
+            sliceX = slice(lowerXplus,upperXplus+1)
+            sliceY = slice(lowerYminus,upperYminus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
+        if (B == 1 and C == 1): #Plankton in Upper Right Corner
+            sliceX = slice(lowerXminus,upperXminus+1)
+            sliceY = slice(lowerYplus,upperYplus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
+        if (B == 1 and D == 1): #Plankton in Lower Right Corner
+            sliceX = slice(lowerXminus,upperXminus+1)
+            sliceY = slice(lowerYminus,upperYminus+1)
+            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
+    return xm,ym,f*(Swimmers.L**2/Swimmers.num)
+```
+
+```{python}
+# %matplotlib notebook
+
+fig   = plt.figure(figsize=(10,7))
+ax    = plt.subplot(1,1,1)
+
+cmap = plt.get_cmap('binary')
+
+xm, ym, Contours = PPF(POS[0],60)
+field = ax.pcolormesh(xm,ym,Contours,cmap=cmap)
+field.set_clim(0.75,1.25)
+plt.title(r'Time = ${0}$, $f(c) = f_{1}(c)$'.format(0,3), fontsize = 20)
+cbar2 = fig.colorbar(field,ticks = [0.75,1,1.25],pad=0.1,shrink=0.8)
+cbar2.update_ticks()
+cbar2.ax.tick_params(labelsize=25)
+cbar2.set_label(r'Plankton, $\rho$',size=30)
+cbar2.ax.set_yticklabels([r'$3\overline{\rho}/4$',r'$\overline{\rho}$',r'$5\overline{\rho}/4$'])
+
+ax.ticklabel_format(style='plain',axis='x')
+ax.locator_params(nbins=3,axis='x')
+ax.locator_params(nbins=3,axis='y')
+ax.tick_params(labelsize=22)
+ax.set_ylabel(r'$y$',size=27)
+ax.set_xlabel(r'$x$',size=27)
+
+def initit():
+    return
+
+def animate(k):
+    xm, ym, Contours = PPF(POS[k],60)
+    Contours = Contours[:-1, :-1]
+    field.set_array(Contours.ravel())
+    plt.title(r'Time = ${0}$, $f(c) = f_{1}(c)$'.format(round(k*Swimmers.k,2),3), fontsize = 20)
+    return field,
+    
+anim = matplotlib.animation.FuncAnimation(fig,animate,frames=range(0,10,1),
+                                          interval=80,blit=False,repeat=False)
+
+# Uncomment if you want to save it to a file.  Requires mencoder or ffmpeg or some writer utility to generate the file.
+#anim.save('./JulyOutput/Switch_Chemical_Sim_Long6.mp4', writer='ffmpeg')
+plt.show()
+```
+
+```{python}
+fig   = plt.figure(figsize=(10,7))
+ax    = plt.subplot(1,1,1)
+vals = [1,2,3]
+n = 1
+cmap = plt.get_cmap('binary')
+
+xm, ym, Contours = PPF(POS[0],400)
+field = ax.pcolormesh(xm,ym,Contours,cmap=cmap)
+field.set_clim(0.75,1.25)
+plt.title(r'Time = ${0}$, $f(c) = f_{1}(c)$'.format(0,vals[n]), fontsize = 20)
+cbar2 = fig.colorbar(field,ticks = [0.75,1,1.25],pad=0.1,shrink=0.8)
+cbar2.update_ticks()
+cbar2.ax.tick_params(labelsize=25)
+cbar2.set_label(r'Plankton, $\rho$',size=30)
+cbar2.ax.set_yticklabels([r'$3\overline{\rho}/4$',r'$\overline{\rho}$',r'$5\overline{\rho}/4$'])
+
+ax.ticklabel_format(style='plain',axis='x')
+ax.locator_params(nbins=3,axis='x')
+ax.locator_params(nbins=3,axis='y')
+ax.tick_params(labelsize=22)
+ax.set_ylabel(r'$y$',size=27)
+ax.set_xlabel(r'$x$',size=27)
+
+def initit():
+    return
+
+def animate(k):
+    xm, ym, Contours = PPF(POS[k],400)
+    Contours = Contours[:-1, :-1]
+    field.set_array(Contours.ravel())
+    plt.title(r'Time = ${0}$, $f(c) = f_{1}(c)$'.format(round(k*Swimmers.k,2),vals[n]), fontsize = 20)
+    return field,
+
+anim = matplotlib.animation.FuncAnimation(fig,animate,frames=range(0,10,2),
+                                          interval=60,blit=False,repeat=False)
+
+# Uncomment if you want to save it to a file.  Requires mencoder or ffmpeg or some writer utility to generate the file.
+#anim.save('./Video_Data/Try2_{0}.mp4'.format(Deps[n]), writer='ffmpeg')
+
+```
+
+```{python}
+
+```
