@@ -26,8 +26,14 @@ from scipy.sparse import diags, hstack, vstack, bsr_matrix, linalg
 
 # Figure 8
 
-In this figure, we understand the stability of the 2D PDE system created in our paper. This 
+In this figure, we understand the stability of the 2D PDE system, 
+$$ c_t = d_1 \Delta c - d_2 c + f(c) \rho$$
 
+$$ \rho(\mathbf{x}, t) = \int_0^{2\pi} \psi(\mathbf{x}, \theta, t) \, d\theta$$ 
+
+$$ \psi_t = - \mathbf{e}_{\theta} \cdot \nabla \psi - \frac{1}{2} \left[ 1 - \frac{ \nabla c \cdot \mathbf{e}_{\theta}}{\sqrt{\left(\nabla c \cdot \mathbf{e}_{\theta}\right)^2 + \delta^2 }}\right]  \psi + \frac{1}{4\pi} \int_0^{2\pi} \left[ 1 - \frac{ \nabla c \cdot \mathbf{e}_{\theta}}{\sqrt{\left(\nabla c \cdot \mathbf{e}_{\theta}\right)^2 + \delta^2 }}\right] \psi(\mathbf{x}, \theta', t) \, d \theta'$$
+
+By using Fourier Stability analysis, we solve for eigenvalues of an infinitely large matrix (with truncation parameter N). We explore many different facets of the stability in this figure. The matrix we analyze is constructed via the MatrixBuild function seen below.
 
 ```{python}
 def MatrixBuild(k1,k2,s):
@@ -50,11 +56,13 @@ def MatrixBuild(k1,k2,s):
 
 ## Figure 8a
 
+This subfigure shows the function $R_N$ for varied $d_1$ while keeping $d_2$ constant. We use $N = 100$. 
+
 ```{python}
 # %matplotlib notebook
 
 plt.figure(figsize=(7.6,5.4),tight_layout = True)
-d1Array = [0.4,0.8,1.2,1.6,2] #Values of d1 to be simulated (decay constant)
+d1Array = [0.4,0.8,1.2,1.6,2] #Values of d1 to be simulated (diffusion constant)
 colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000'] #Using IBM Colorblind Scheme 
 markers = ['o','p','s','^','D']
 params = {'legend.fontsize': 15,'legend.framealpha':1}
@@ -97,10 +105,12 @@ plt.tick_params(labelsize=18)
 plt.yticks([-0.5,0,0.5,1])
 plt.legend()
 
-plt.savefig('../Final_Figures/Figure_8a')
+#plt.savefig('../Final_Figures/Figure_8a')
 ```
 
 ## Figure 8b
+
+This subfigure shows the function $R_N$ for varied $d_1$ while keeping $d_2$ constant. We use $N = 100$. 
 
 ```{python}
 plt.figure(figsize=(7.6,5.4),tight_layout = True)
@@ -147,128 +157,12 @@ plt.ylim(-.75,1)
 plt.tick_params(labelsize=18)
 plt.yticks([-0.5,0,0.5,1])
 plt.legend()
-plt.savefig('../Final_Figures/Figure_8b')
+#plt.savefig('../Final_Figures/Figure_8b')
 ```
 
 ## Figure 8c
 
-```{python}
-d1array = np.linspace(.0001,1,250)
-d2array = np.linspace(.0001,1,250)
-i = 0
-delta = 0.001
-c0 = 0.012
-StableMat = np.zeros((len(d1array),len(d2array)))
-
-for i in range(0,len(d1array)):
-    for j in range(0,len(d2array)):
-        d1 = d1array[i]
-        d2 = d2array[j]
-        f0 = DP.atanDep(c0,0.01,0.05,.03)
-        f1 = DP.atanDep(c0+0.0001,0.01,0.05,.03)
-        f2 = DP.atanDep(c0-0.0001,0.01,0.05,.03)          
-        p = d2*c0/f0
-        psib = p/(2*pi)
-        fp = (f1 - f2)/(2*0.0001)
-        d3 = p*fp - d2
-
-        eigs = []
-        modes = 40
-        k11 = np.linspace(0,1,40)
-        for n in k11:
-            try:
-                eigs=np.append(eigs,linalg.eigs(MatrixBuild(n,n,modes),which='LR',k=1)[0][0])
-            except:
-                eigs = np.append(eigs,max(np.real(linalg.eigs(MatrixBuild(n,n,modes),k=int(modes/5))[0])))
-        if (max(eigs) > 0):
-            StableMat[i,j] = np.sqrt(2)*k11[np.argmax(eigs)]
-```
-
-```{python}
-StableLine = [] #Find border between unstable regions
-L = 10
-for i in range(len(d1array)):
-    MM = 0
-    for j in range(len(d2array)):
-        if (StableMat[i,j] > (2*pi)/L and MM==0): #Given d_1, find first d2 such that the system is unstable
-            StableLine.append(d2array[j])
-            MM=1
-StableLine[0] = 0.0001         
-fig, ax = plt.subplots(figsize=(7.6,5.4),tight_layout=True)
-ax.fill_between(d1array[:len(StableLine)],StableLine,1,facecolor='green')
-ax.set_xlabel(r'$d_1$',fontsize=25)
-ax.set_xlim(0,1)
-ax.set_ylabel(r'$d_2$',fontsize=25)
-ax.set_ylim(0,1)
-ax.locator_params(nbins=5)
-ax.tick_params(labelsize=18)
-ax.set_title('Stability Regions for $\ell = {0}$, $\delta = {1}$'.format(L,delta), fontsize = 20)
-ax.text(.3,.6,'Unstable',color='White',fontsize=25)
-ax.text(.7,.1,'Stable',color='Black',fontsize=25)
-
-#plt.savefig('../Final_Figures/Figure_8c')
-```
-
-## Figure 8d
-
-```{python}
-d1array = np.linspace(.0001,1,250)
-d2array = np.linspace(.0001,1,250)
-i = 0
-delta = 0.004
-c0 = 0.012
-StableMat2 = np.zeros((len(d1array),len(d2array)))
-
-for i in range(0,len(d1array)):
-    for j in range(0,len(d2array)):
-        d1 = d1array[i]
-        d2 = d2array[j]
-        f0 = DP.atanDep(c0,0.01,0.05,.03)
-        f1 = DP.atanDep(c0+0.0001,0.01,0.05,.03)
-        f2 = DP.atanDep(c0-0.0001,0.01,0.05,.03)          
-        p = d2*c0/f0
-        psib = p/(2*pi)
-        fp = (f1 - f2)/(2*0.0001)
-        d3 = p*fp - d2
-
-        eigs = []
-        modes = 10
-        k11 = np.linspace(0,1,40)
-        for n in k11:
-            try:
-                eigs=np.append(eigs,linalg.eigs(MatrixBuild(n,n,modes),which='LR',k=1)[0][0])
-            except:
-                eigs = np.append(eigs,max(np.real(linalg.eigs(MatrixBuild(n,n,modes),k=int(modes/5))[0])))
-        if (max(eigs) > 0):
-            StableMat2[i,j] = np.sqrt(2)*k11[np.argmax(eigs)]
-```
-
-```{python}
-# %matplotlib notebook
-
-StableLine = [] #Find border between unstable regions
-L = 10
-for i in range(len(d1array)):
-    MM = 0
-    for j in range(len(d2array)):
-        if (StableMat2[i,j] > (2*pi)/L and MM==0): #Given d_1, find first d2 such that the system is unstable
-            StableLine.append(d2array[j])
-            MM=1
-            
-fig, ax = plt.subplots(figsize=(7.6,5.4),tight_layout=True)
-ax.fill_between(d1array[:len(StableLine)],StableLine,1,facecolor='green')
-ax.set_xlabel(r'$d_1$',fontsize=25)
-ax.set_xlim(0,1)
-ax.set_ylabel(r'$d_2$',fontsize=25)
-ax.set_ylim(0,1)
-ax.locator_params(nbins=5)
-ax.tick_params(labelsize=18)
-ax.set_title('Stability Regions for $\ell = {0}$, $\delta = {1}$'.format(L,delta), fontsize = 20)
-ax.text(.05,.8,'Unstable',color='White',fontsize=25)
-ax.text(.5,.5,'Stable',color='Black',fontsize=25)
-
-plt.savefig('../Final_Figures/Fig8f')
-```
+We now show how $R_n(k)$ changes as $N$ varies. 
 
 ```{python}
 plt.figure(figsize=(7.6,5.4),tight_layout = True)
@@ -313,8 +207,12 @@ plt.ylim(-.75,1)
 plt.tick_params(labelsize=18)
 plt.yticks([-0.5,0,0.5,1])
 plt.legend()
-plt.savefig('../Final_Figures/Fig8c')
+#plt.savefig('../Final_Figures/Fig8c')
 ```
+
+## Figure 8d
+
+By varying $c_0$, the threshold parameter for $f_2$ and $f_3$, we are able to recover the stability for the constant deposition function, $f_1$. 
 
 ```{python}
 plt.figure(figsize=(7.6,5.4),tight_layout = True)
@@ -373,75 +271,129 @@ plt.ylim(-.75,1)
 plt.tick_params(labelsize=18)
 plt.yticks([-0.5,0,0.5,1])
 plt.legend()
-plt.savefig('../Final_Figures/Fig8d')
+#plt.savefig('../Final_Figures/Fig8d')
 ```
 
+## Figure 8e
+
+We now construct stability plots in the $d_1$-$d_2$ plane with $\delta = 0.001$. 
+
 ```{python}
-fig, ax = plt.subplots(figsize=(7.6,5.4),tight_layout = True)
-modd = [5,10,20,50,100] #Values of d2 to be simulated (decay constant)
-colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000'] #Using IBM Colorblind Scheme 
-markers = ['o','p','s','^','D']
-K = 4
+d1array = np.linspace(.0001,1,250)
+d2array = np.linspace(.0001,1,250)
+i = 0
 delta = 0.001
-d1 = 1
-d2 = 1
 c0 = 0.012
-axins = zoomed_inset_axes(ax,2,loc=1)
-axins.set_xlim(4,5)
-axins.set_ylim(-0.55,-0.4)
+StableMat = np.zeros((len(d1array),len(d2array)))
 
-for i in range(len(modd)):    
-    f0 = DP.atanDep(c0,0.01,0.05,.03)
-    f1 = DP.atanDep(c0+0.0001,0.01,0.05,.03)
-    f2 = DP.atanDep(c0-0.0001,0.01,0.05,.03)          
-    p = d2*c0/f0
-    psib = p/(2*pi)
-    fp = (f1 - f2)/(2*0.0001)
-    d3 = p*fp - d2
+for i in range(0,len(d1array)):
+    for j in range(0,len(d2array)):
+        d1 = d1array[i]
+        d2 = d2array[j]
+        f0 = DP.atanDep(c0,0.01,0.05,.03)
+        f1 = DP.atanDep(c0+0.0001,0.01,0.05,.03)
+        f2 = DP.atanDep(c0-0.0001,0.01,0.05,.03)          
+        p = d2*c0/f0
+        psib = p/(2*pi)
+        fp = (f1 - f2)/(2*0.0001)
+        d3 = p*fp - d2
 
-    eigs = []
-    modes = modd[i]
-    k11 = np.linspace(0,3.56,40)
-    for j in k11:
-        try:
-            eigs=np.append(eigs,linalg.eigs(MatrixBuild(j,j,modes),which='LR',k=1)[0][0])
-        except:
-            eigs = np.append(eigs,max(np.real(linalg.eigs(MatrixBuild(j,j,modes),k=int(modes/5))[0])))
-    ax.plot(np.sqrt(2)*k11,eigs,label=r'$N = {0}$'.format(modes),color=colors[i],marker=markers[i],
-            markevery=K,linewidth=2.4)
-    axins.plot(np.sqrt(2)*k11,eigs,label=r'$N = {0}$'.format(modes),color=colors[i],marker=markers[i],
-            markevery=K,linewidth=1.5)
+        eigs = []
+        modes = 40
+        k11 = np.linspace(0,1,40)
+        for n in k11:
+            try:
+                eigs=np.append(eigs,linalg.eigs(MatrixBuild(n,n,modes),which='LR',k=1)[0][0])
+            except:
+                eigs = np.append(eigs,max(np.real(linalg.eigs(MatrixBuild(n,n,modes),k=int(modes/5))[0])))
+        if (max(eigs) > 0):
+            StableMat[i,j] = np.sqrt(2)*k11[np.argmax(eigs)]
+```
 
-
-ax.plot(np.sqrt(2)*k11[0:len(eigs)],eigs*0,'k',linestyle='-',linewidth=2)
-ax.plot(np.sqrt(2)*k11[0:len(eigs)],eigs*0-1/2,'k',linestyle='--',linewidth=2)
-axins.plot(np.sqrt(2)*k11[0:len(eigs)],eigs*0-1/2,'k',linestyle='--',linewidth=1)
-
-plt.xticks(visible=False)
-plt.yticks(visible=False)
-
-mark_inset(ax,axins,loc1=3,loc2=4,fc="none",ec="0.5")
-
-ax.set_xlabel(r'Magnitude of Wave Number, $|\vec{k}|$',fontsize=20)
-ax.set_ylabel(r'$R_N(|\vec{k}|)$',fontsize=28,labelpad=-10)
-ax.set_title(r'Maximal Real Part of Eigenvalues', fontsize=20)
-#plt.legend(loc=0)
-ax.set_xlim(0,5)
-ax.set_ylim(-.75,1)
+```{python}
+StableLine = [] #Find border between unstable regions
+L = 10
+for i in range(len(d1array)):
+    MM = 0
+    for j in range(len(d2array)):
+        if (StableMat[i,j] > (2*pi)/L and MM==0): #Given d_1, find first d2 such that the system is unstable
+            StableLine.append(d2array[j])
+            MM=1
+StableLine[0] = 0.0001         
+fig, ax = plt.subplots(figsize=(7.6,5.4),tight_layout=True)
+ax.fill_between(d1array[:len(StableLine)],StableLine,1,facecolor='green')
+ax.set_xlabel(r'$d_1$',fontsize=25)
+ax.set_xlim(0,1)
+ax.set_ylabel(r'$d_2$',fontsize=25)
+ax.set_ylim(0,1)
+ax.locator_params(nbins=5)
 ax.tick_params(labelsize=18)
-ax.set_yticks([-0.5,0,0.5,1])
-#plt.legend()
-#plt.savefig('../Final_Figures/PossibleFigure8c')
+ax.set_title('Stability Regions for $\ell = {0}$, $\delta = {1}$'.format(L,delta), fontsize = 20)
+ax.text(.3,.6,'Unstable',color='White',fontsize=25)
+ax.text(.7,.1,'Stable',color='Black',fontsize=25)
+
+#plt.savefig('../Final_Figures/Figure_8e')
+```
+
+## Figure 8f
+
+We now construct stability diagrams in the $d_1$-$d_2$ plane with $\delta = 0.004$. Notice the drastic change in behaviors.
+
+```{python}
+d1array = np.linspace(.0001,1,250)
+d2array = np.linspace(.0001,1,250)
+i = 0
+delta = 0.004
+c0 = 0.012
+StableMat2 = np.zeros((len(d1array),len(d2array)))
+
+for i in range(0,len(d1array)):
+    for j in range(0,len(d2array)):
+        d1 = d1array[i]
+        d2 = d2array[j]
+        f0 = DP.atanDep(c0,0.01,0.05,.03)
+        f1 = DP.atanDep(c0+0.0001,0.01,0.05,.03)
+        f2 = DP.atanDep(c0-0.0001,0.01,0.05,.03)          
+        p = d2*c0/f0
+        psib = p/(2*pi)
+        fp = (f1 - f2)/(2*0.0001)
+        d3 = p*fp - d2
+
+        eigs = []
+        modes = 10
+        k11 = np.linspace(0,1,40)
+        for n in k11:
+            try:
+                eigs=np.append(eigs,linalg.eigs(MatrixBuild(n,n,modes),which='LR',k=1)[0][0])
+            except:
+                eigs = np.append(eigs,max(np.real(linalg.eigs(MatrixBuild(n,n,modes),k=int(modes/5))[0])))
+        if (max(eigs) > 0):
+            StableMat2[i,j] = np.sqrt(2)*k11[np.argmax(eigs)]
 ```
 
 ```{python}
-from mpl_toolkits.axes_grid1.inset_locator import zoomed_inset_axes
-```
+# %matplotlib notebook
 
-```{python}
-from mpl_toolkits.axes_grid1.inset_locator import mark_inset
-```
+StableLine = [] #Find border between unstable regions
+L = 10
+for i in range(len(d1array)):
+    MM = 0
+    for j in range(len(d2array)):
+        if (StableMat2[i,j] > (2*pi)/L and MM==0): #Given d_1, find first d2 such that the system is unstable
+            StableLine.append(d2array[j])
+            MM=1
+            
+fig, ax = plt.subplots(figsize=(7.6,5.4),tight_layout=True)
+ax.fill_between(d1array[:len(StableLine)],StableLine,1,facecolor='green')
+ax.set_xlabel(r'$d_1$',fontsize=25)
+ax.set_xlim(0,1)
+ax.set_ylabel(r'$d_2$',fontsize=25)
+ax.set_ylim(0,1)
+ax.locator_params(nbins=5)
+ax.tick_params(labelsize=18)
+ax.set_title('Stability Regions for $\ell = {0}$, $\delta = {1}$'.format(L,delta), fontsize = 20)
+ax.text(.05,.8,'Unstable',color='White',fontsize=25)
+ax.text(.5,.5,'Stable',color='Black',fontsize=25)
 
-```{python}
-
+#plt.savefig('../Final_Figures/Fig8f')
 ```

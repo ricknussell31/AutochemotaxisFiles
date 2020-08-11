@@ -131,9 +131,9 @@ class PlankChem(Background_Field):
         # First Order Method
         # Perturb the constant solutions
         
-        cn = ck + 0.00016*cos(self.LP*self.CC*self.xm)
-        pn = pk - 0.00014*cos(self.LP*self.CC*self.xm)
-        qn = qk + 0.00005*cos(self.LP*self.CC*self.xm)
+        cn = ck 
+        pn = pk 
+        qn = qk
         
         totalc, totalp, totalq = self.totalsF(cn,pn,qn)
         
@@ -142,9 +142,7 @@ class PlankChem(Background_Field):
     def firstStepSO(self,ck,pk):
         # Second Order Method 
         # Perturb the constant solutions 
-
-        #cn = ck + 0.000016*cos(self.LP*self.CC*self.xm) #+ .0001*cos(self.CC*self.xm)
-        #pn = pk - 0.000009*cos(self.LP*self.CC*self.xm) #+ .0001*cos(self.CC*self.xm)
+        
         cn = ck
         pn = pk
         totalc, totalp = self.totals(cn,pn)

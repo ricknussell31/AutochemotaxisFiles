@@ -261,7 +261,3 @@ ax.text(.5,.4,'Stable',color='Black',fontsize=25)
 
 plt.savefig('../Final_Figures/Figure_4d')
 ```
-
-```{python}
-
-```

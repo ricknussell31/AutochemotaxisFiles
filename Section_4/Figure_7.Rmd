@@ -41,58 +41,48 @@ We choose to show non-constant steady states with $\delta = 0, 0.02, 0.04, 0.06$
 As well, to compare all simulations, we center all data around the maximum of the data. We accomplish this by using the CenterData function in our Plotting module. As $\delta \to 0$, we note that the peak of the aggregation gets more defined and at $\delta = 0$, we approach a steady state with two exponential functions stiched together. 
 
 ```{python}
-deltas = np.array([0,.02,.04,.06])
+deltas = np.array([0,.015,.03,.045])
 
+Planks = np.zeros((302,len(deltas)))
+Chems = np.zeros((302,len(deltas)))
 for k in range(len(deltas)):
     Swimmers = PM.PlankChem(depFcn=DM.constantDep,left=0,right=5,d1=1,d2=2,N=301,
                             dt=0.004,depMaxStr=0.01, depThreshold=0.05, depTransWidth=0.03, delta = deltas[k])
 
-
     #Global parameters#
 
-    TotalTime = int(200/Swimmers.dt) #Total number of iterations for the experiment
+    TotalTime = int(150/Swimmers.dt) #Total number of iterations for the experiment
     c0 = .12 #Initial Constant Value of Chemical for the experiment
-    Swimmers.CheckStability(c0) #checks the stability of the system and outputs the most unstable wave number if unstable#
-
+    
+    #initialize system
     CA, PA, CT, PT = Swimmers.initial_conditionsSO(const=c0, steps=TotalTime)
-
-    #perturb the initial solution
     CA[1,:], PA[1,:], CT[1], PT[1] = Swimmers.firstStepSO(CA[0,:],PA[0,:])
 
     #Complete the iterations necessary
     for i in range(1, len(CT)-1):
             CA[i+1,:], PA[i+1,:], CT[i+1], PT[i+1] = Swimmers.SecondOrder(CA[i,:],PA[i,:],PA[i-1,:])
-
-    np.save('./Data/Chem_Delta{0}.npy'.format(deltas[k]),CA[-1])
-    np.save('./Data/Plank_Delta{0}.npy'.format(deltas[k]),PA[-1])
+    
+    Planks[:,k] = PA[-1]
+    Chems[:,k] = CA[-1]
 ```
 
-```{python}
-deltas = np.array([0,.02,.04,.06])
-k = 1
-Swimmers = PM.PlankChem(depFcn=DM.constantDep,left=0,right=5,d1=1,d2=2,N=301,
-                            dt=0.004,depMaxStr=0.01, depThreshold=0.05, depTransWidth=0.03, delta = deltas[k])
-TotalTime = int(200/Swimmers.dt) #Total number of iterations for the experiment
-c0 = .12 #Initial Constant Value of Chemical for the experiment
-Swimmers.CheckStability(c0) #checks the stability of the system and outputs the most unstable wave number if unstable#
+## Figure 7a
 
-```
+This plots the steady state plankton density by centering the data around the largest point of the aggregation. 
 
 ```{python}
 # %matplotlib notebook
-params = {'legend.fontsize': 15}
+params = {'legend.fontsize': 14}
 plt.rcParams.update(params)
 
 fig, ax1 = plt.subplots(tight_layout=True)
 colors = ['#D55E00','#000000','#882255','#009E73']
-markers = ['o','+','|','*']
 linestyles = ['-', '--', '-.', ':']
 for k in range(len(deltas)):
-    PAA, CAA = PL.CenterData(Swimmers,np.load('./Data/Plank_Delta{0}.npy'.format(deltas[k])),
-                             np.load('./Data/Chem_Delta{0}.npy'.format(deltas[k])))
+    PAA, CAA = PL.CenterData(Swimmers,Planks[:,k],Chems[:,k])
     xm = np.linspace(0,5,len(PAA))
     ax1.plot(xm, PAA, color=colors[k],linestyle=linestyles[k],linewidth = 2.3,
-             label='$\delta = {0}$'.format(round(deltas[k],2)))
+             label='$\delta = {0}$'.format(round(deltas[k],3)))
     ax1.set_xlabel(r'$x$',fontsize=25)
     ax1.set_ylabel(r'Plankton Density, $\rho$',fontsize=18)
     ax1.set_xlim(Swimmers.left, Swimmers.right)
@@ -113,11 +103,10 @@ markers = ['o','+','|','*']
 linestyles = ['-', '--', '-.', ':']
 i = 0
 for k in range(len(deltas)):
-    PAA, CAA = PL.CenterData(Swimmers,np.load('./Data/Plank_Delta{0}.npy'.format(deltas[k])),
-                             np.load('./Data/Chem_Delta{0}.npy'.format(deltas[k])))
+    PAA, CAA = PL.CenterData(Swimmers,Planks[:,k],Chems[:,k])
     xm = np.linspace(0,5,len(CAA))
     ax1.plot(xm, CAA, color=colors[k],linestyle=linestyles[k],linewidth = 2.3,
-             label='$\delta = {0}$'.format(round(deltas[k],2)))
+             label='$\delta = {0}$'.format(round(deltas[k],3)))
     ax1.set_xlabel(r'$x$',fontsize=25)
     ax1.set_ylabel(r'Chemical Concentration, $c$',fontsize=18)
     ax1.set_xlim(Swimmers.left, Swimmers.right)
@@ -127,10 +116,6 @@ ax1.tick_params(labelsize=15)
 ax1.yaxis.get_offset_text().set_fontsize(15)
 ax1.set_title(r'Steady State: Chemical',fontsize=19)
 
-plt.legend()
+plt.legend(loc=1)
 plt.savefig('../Final_Figures/Figure_7b')
-```
-
-```{python}
-
 ```

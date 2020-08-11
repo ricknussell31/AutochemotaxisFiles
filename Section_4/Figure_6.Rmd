@@ -83,11 +83,15 @@ for i in range(1, len(CTC)-1):
 ```{python}
 fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(25,5),tight_layout=True,sharey='row')
 
-lns1 = axs[0].plot(Swimmers.xm,PAC[0],color='r',label='Plankton',linewidth=2.5)
+#input times you would like to plot
+timesc = [0,4,20,100,150]
+
+k = int(timesc[0]/Swimmers.dt)
+lns1 = axs[0].plot(Swimmers.xm,PAC[k],color='r',label='Plankton',linewidth=2.5)
 axs[0].ticklabel_format(style='sci', scilimits=(2,2),axis='y',useMathText=True)
 axs[0].yaxis.get_offset_text().set_fontsize(16)
 ax2 = axs[0].twinx()  #create a second axes that shares the same x-axis
-lns2 = ax2.plot(Swimmers.xm,CAC[0],color='b',linestyle='--',label='Chemical',linewidth=2.5)
+lns2 = ax2.plot(Swimmers.xm,CAC[k],color='b',linestyle='--',label='Chemical',linewidth=2.5)
 ax2.ticklabel_format(style='sci', scilimits=(-1,-1),axis='y')
 ax2.set_yticklabels([])
 ax2.locator_params(nbins=3,axis='y')
@@ -102,19 +106,19 @@ axs[0].set_xlim(0,Swimmers.right)
 axs[0].set_ylim(0,max(PAC[-1])+10)
 axs[0].set_xlabel(r'$x$',fontsize=30)
 axs[0].set_ylabel(r'Plankton Density', fontsize=22, color='r')
-axs[0].set_title(r'$t = {0}$',fontsize=30)
+axs[0].set_title(r'$t = {0}$'.format(timesc[0]),fontsize=30)
 axs[0].locator_params(nbins=5,axis='x')
 axs[0].locator_params(nbins=3,axis='y')
 
 axs[0].tick_params(labelsize=18)
 
-k = int(4/Swimmers.dt)
+k = int(timesc[1]/Swimmers.dt)
 axs[1].plot(Swimmers.xm,PAC[k],color='r',linewidth=2.5)
 axs[1].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
 axs[1].ticklabel_format(style='plain',axis='x')
 axs[1].set_xlim(0,Swimmers.right)
 axs[1].set_xlabel(r'$x$',fontsize=30)
-axs[1].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
+axs[1].set_title(r'$t = {0}$'.format(timesc[1]),fontsize=30)
 axs[1].locator_params(nbins=3,axis='y')
 axs[1].tick_params(labelsize=18)
 
@@ -128,15 +132,13 @@ ax2.locator_params(nbins=3,axis='y')
 
 
 
-
-
-k = int(20/Swimmers.dt)
+k = int(timesc[2]/Swimmers.dt)
 axs[2].plot(Swimmers.xm,PAC[k],color='r',linewidth=2.5)
 axs[2].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
 axs[2].ticklabel_format(style='plain',axis='x')
 axs[2].set_xlim(0,Swimmers.right)
 axs[2].set_xlabel(r'$x$',fontsize=30)
-axs[2].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
+axs[2].set_title(r'$t = {0}$'.format(timesc[2]),fontsize=30)
 axs[2].locator_params(nbins=3,axis='y')
 axs[2].tick_params(labelsize=18)
 axs[2].yaxis.get_offset_text().set_fontsize(15)
@@ -149,13 +151,13 @@ ax2.set_ylim(0e-1,5e-1)
 ax2.locator_params(nbins=3,axis='y')
 
 
-k = int(100/Swimmers.dt)
+k = int(timesc[3]/Swimmers.dt)
 axs[3].plot(Swimmers.xm,PAC[k],color='r',linewidth=2.5)
 axs[3].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
 axs[3].ticklabel_format(style='plain',axis='x')
 axs[3].set_xlim(0,Swimmers.right)
 axs[3].set_xlabel(r'$x$',fontsize=30)
-axs[3].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
+axs[3].set_title(r'$t = {0}$'.format(timesc[3]),fontsize=30)
 axs[3].locator_params(nbins=3,axis='y')
 axs[3].tick_params(labelsize=18)
 axs[3].yaxis.get_offset_text().set_fontsize(15)
@@ -168,13 +170,13 @@ ax2.set_ylim(0e-1,5e-1)
 ax2.locator_params(nbins=3,axis='y')
 
 
-k = int(150/Swimmers.dt)
+k = int(timesc[4]/Swimmers.dt)
 axs[4].plot(Swimmers.xm,PAC[k],color='r',linewidth=2.5)
 axs[4].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
 axs[4].ticklabel_format(style='plain',axis='x')
 axs[4].set_xlim(0,Swimmers.right)
 axs[4].set_xlabel(r'$x$',fontsize=30)
-axs[4].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
+axs[4].set_title(r'$t = {0}$'.format(timesc[4]),fontsize=30)
 axs[4].locator_params(nbins=3,axis='y')
 axs[4].tick_params(labelsize=18)
 ax2 = axs[4].twinx()  #create a second axes that shares the same x-axis
@@ -188,12 +190,7 @@ ax2.tick_params(labelsize=18)
 ax2.set_ylim(0e-1,5e-1)
 ax2.locator_params(nbins=4,axis='y')
 
-plt.savefig('../Final_Figures/Figure_6a')
-```
-
-```{python}
-np.save('./Data/Figure_6a_Plankton.npy',PAC)
-np.save('./Data/Figure_6a_Chemical.npy',CAC)
+#plt.savefig('../Final_Figures/Figure_6a')
 ```
 
 ### Supplemental Video for Figure 6a
@@ -247,7 +244,7 @@ def animate(i):
 
 
 ani = matplotlib.animation.FuncAnimation(fig2, animate, init_func=init, frames=range(0,int(160/Swimmers.dt),3), interval=1, blit=True,repeat=False)
-ani.save('../Final_Figures/Figure_6a_Supplemental_Video.mp4', writer='ffmpeg')
+#ani.save('../Final_Figures/Figure_6a_Supplemental_Video.mp4', writer='ffmpeg')
 ```
 
 ## Figure 6b
@@ -292,118 +289,87 @@ for i in range(1, len(CTS)-1):
 ```{python}
 fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(25,5),tight_layout=True,sharey='row')
 
-lns1 = axs[0].plot(Swimmers.xm,PAS[0],color='r',label='Plankton',linewidth=2.5)
-axs[0].ticklabel_format(style='sci', scilimits=(2,2),axis='y',useMathText=True)
-axs[0].yaxis.get_offset_text().set_fontsize(16)
+#input times you would like to plot
+timesa = [0,4,20,100,150]
+
+k = int(timesa[0]/Swimmers.dt)
+lns1 = axs[0].plot(Swimmers.xm,PAS[k],color='r',label='Plankton',linewidth=2.5)
+axs[0].set_ylim(0,max(PAS[-1])+10)
+axs[0].set_ylabel(r'Plankton Density', fontsize=22, color='r')
 ax2 = axs[0].twinx()  #create a second axes that shares the same x-axis
-lns2 = ax2.plot(Swimmers.xm,CAS[0],color='b',linestyle='--',label='Chemical',linewidth=2.5)
+lns2 = ax2.plot(Swimmers.xm,CAS[k],color='b',linestyle='--',label='Chemical',linewidth=2.5)
 ax2.ticklabel_format(style='sci', scilimits=(-1,-1),axis='y')
 ax2.set_yticklabels([])
-ax2.locator_params(nbins=3,axis='y')
+ax2.locator_params(nbins=5,axis='x')
+ax2.locator_params(nbins=4,axis='y')
+ax2.yaxis.get_offset_text().set_fontsize(16)
+ax2.tick_params(labelsize=18)
 ax2.set_ylim(0e-1,3e-1)
 lns = lns1+lns2
 labs = [l.get_label() for l in lns]
 axs[0].legend(lns, labs, loc=0, prop={"size":19})
 
-
-axs[0].ticklabel_format(style='plain',axis='x')
-axs[0].set_xlim(0,Swimmers.right)
-axs[0].set_ylim(0,max(PAS[-1])+10)
-axs[0].set_xlabel(r'$x$',fontsize=30)
-axs[0].set_ylabel(r'Plankton Density', fontsize=22, color='r')
-axs[0].set_title(r'$t = {0}$',fontsize=30)
-axs[0].locator_params(nbins=5,axis='x')
-axs[0].locator_params(nbins=4,axis='y')
-
-axs[0].tick_params(labelsize=18)
-
-k = int(4/Swimmers.dt)
+k = int(timesa[1]/Swimmers.dt)
 axs[1].plot(Swimmers.xm,PAS[k],color='r',linewidth=2.5)
-axs[1].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
-axs[1].ticklabel_format(style='plain',axis='x')
-axs[1].set_xlim(0,Swimmers.right)
-axs[1].set_xlabel(r'$x$',fontsize=30)
-axs[1].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
-axs[1].locator_params(nbins=5,axis='x')
-axs[1].tick_params(labelsize=18)
-
 ax2 = axs[1].twinx()  #create a second axes that shares the same x-axis
 ax2.plot(Swimmers.xm,CAS[k],color='b',linestyle='--',linewidth=2.5)
-ax2.ticklabel_format(style='sci', scilimits=(-1,-1),axis='y')
 ax2.set_yticklabels([])
+ax2.locator_params(nbins=5,axis='x')
+ax2.locator_params(nbins=4,axis='y')
+ax2.yaxis.get_offset_text().set_fontsize(16)
+ax2.tick_params(labelsize=18)
 ax2.set_ylim(0e-1,3e-1)
-ax2.locator_params(nbins=3,axis='y')
 
-
-
-
-
-k = int(20/Swimmers.dt)
+k = int(timesa[2]/Swimmers.dt)
 axs[2].plot(Swimmers.xm,PAS[k],color='r',linewidth=2.5)
-axs[2].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
-axs[2].ticklabel_format(style='plain',axis='x')
-axs[2].set_xlim(0,Swimmers.right)
-axs[2].set_xlabel(r'$x$',fontsize=30)
-axs[2].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
-axs[2].locator_params(nbins=4)
-axs[2].tick_params(labelsize=18)
-axs[2].yaxis.get_offset_text().set_fontsize(15)
 ax2 = axs[2].twinx()  #create a second axes that shares the same x-axis
 ax2.plot(Swimmers.xm,CAS[k],color='b',linestyle='--',linewidth=2.5)
-ax2.ticklabel_format(style='sci', scilimits=(-1,-1),axis='y')
 ax2.set_yticklabels([])
+ax2.locator_params(nbins=5,axis='x')
+ax2.locator_params(nbins=4,axis='y')
+ax2.yaxis.get_offset_text().set_fontsize(16)
+ax2.tick_params(labelsize=18)
 ax2.set_ylim(0e-1,3e-1)
 
-ax2.locator_params(nbins=5,axis='x')
-ax2.locator_params(nbins=3,axis='y')
 
-k = int(300/Swimmers.dt)
+k = int(timesa[3]/Swimmers.dt)
 axs[3].plot(Swimmers.xm,PAS[k],color='r',linewidth=2.5)
-axs[3].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
-axs[3].ticklabel_format(style='plain',axis='x')
-axs[3].set_xlim(0,Swimmers.right)
-axs[3].set_xlabel(r'$x$',fontsize=30)
-axs[3].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
-axs[3].locator_params(nbins=4)
-axs[3].tick_params(labelsize=18)
-axs[3].yaxis.get_offset_text().set_fontsize(15)
 ax2 = axs[3].twinx()  #create a second axes that shares the same x-axis
 ax2.plot(Swimmers.xm,CAS[k],color='b',linestyle='--',linewidth=2.5)
 ax2.ticklabel_format(style='sci', scilimits=(-1,-1),axis='y')
 ax2.set_yticklabels([])
-ax2.set_ylim(0e-1,3e-1)
 ax2.locator_params(nbins=5,axis='x')
-ax2.locator_params(nbins=3,axis='y')
-
-
-k = int(350/Swimmers.dt)
-axs[4].plot(Swimmers.xm,PAS[k],color='r',linewidth=2.5)
-axs[4].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
-axs[4].ticklabel_format(style='plain',axis='x')
-axs[4].set_xlim(0,Swimmers.right)
-axs[4].set_xlabel(r'$x$',fontsize=30)
-axs[4].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
-axs[4].locator_params(nbins=4)
-axs[4].tick_params(labelsize=18)
-ax2 = axs[4].twinx()  #create a second axes that shares the same x-axis
-ax2.plot(Swimmers.xm,CAS[k],color='b',linestyle='--',linewidth=2.5)
-ax2.locator_params(nbins=5,axis='x')
-
+ax2.locator_params(nbins=4,axis='y')
 ax2.yaxis.get_offset_text().set_fontsize(16)
-
-#ax2.ticklabel_format(style='sci', scilimits=(-2,-2),axis='y')
-ax2.ticklabel_format(style='sci', scilimits=(-1,-1),axis='y',useMathText=True)
-ax2.set_ylabel(r'Chemical Concentration', color='blue',fontsize=22,rotation=-90,labelpad=30)
 ax2.tick_params(labelsize=18)
 ax2.set_ylim(0e-1,3e-1)
+
+k = int(timesa[4]/Swimmers.dt)
+axs[4].plot(Swimmers.xm,PAS[k],color='r',linewidth=2.5)
+ax2 = axs[4].twinx()  #create a second axes that shares the same x-axis
+ax2.plot(Swimmers.xm,CAS[k],color='b',linestyle='--',linewidth=2.5)
+ax2.ticklabel_format(style='sci', scilimits=(-1,-1),axis='y')
+ax2.locator_params(nbins=5,axis='x')
 ax2.locator_params(nbins=4,axis='y')
+ax2.yaxis.get_offset_text().set_fontsize(16)
+ax2.tick_params(labelsize=18)
+ax2.set_ylim(0e-1,3e-1)
 
+ax2.set_ylabel(r'Chemical Concentration', color='blue',fontsize=22,rotation=-90,labelpad=30)
+
+for i in range(0,5):
+    axs[i].set_xlabel(r'$x$',fontsize=30)
+    axs[i].tick_params(labelsize=18)
+    axs[i].locator_params(nbins=5,axis='x')
+    axs[i].locator_params(nbins=4,axis='y')
+    axs[i].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
+    axs[i].ticklabel_format(style='plain',axis='x')
+    axs[i].set_xlim(0,Swimmers.right)
+    axs[i].set_title(r'$t = {0}$'.format(timesa[i]),fontsize=30)
+    axs[i].yaxis.get_offset_text().set_fontsize(15)
+
+    
 #plt.savefig('../Final_Figures/Figure_6b')
-```
-
-```{python}
-np.save('./Data/Figure_6b_Plankton.npy',PAS)
-np.save('./Data/Figure_6b_Chemical.npy',CAS)
 ```
 
 ### Supplemental Video for Figure 6b
@@ -493,11 +459,16 @@ for i in range(1, len(CTL)-1):
 ```{python}
 fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(25,5),tight_layout=True,sharey='row')
 
-lns1 = axs[0].plot(Swimmers.xm,PAL[0],color='r',label='Plankton',linewidth=2.5)
+#Input times you would like you plot
+
+timesl = [0,4,20,75,100]
+
+k = int(timesl[0]/Swimmers.dt)
+lns1 = axs[0].plot(Swimmers.xm,PAL[k],color='r',label='Plankton',linewidth=2.5)
 axs[0].ticklabel_format(style='sci', scilimits=(2,2),axis='y',useMathText=True)
 axs[0].yaxis.get_offset_text().set_fontsize(16)
 ax2 = axs[0].twinx()  #create a second axes that shares the same x-axis
-lns2 = ax2.plot(Swimmers.xm,CAL[0],color='b',linestyle='--',label='Chemical',linewidth=2.5)
+lns2 = ax2.plot(Swimmers.xm,CAL[k],color='b',linestyle='--',label='Chemical',linewidth=2.5)
 ax2.ticklabel_format(style='sci', scilimits=(-2,-2),axis='y')
 ax2.set_yticklabels([])
 ax2.locator_params(nbins=4,axis='y')
@@ -513,19 +484,19 @@ axs[0].set_xlim(0,Swimmers.right)
 axs[0].set_ylim(0,max(PAL[-1])+10)
 axs[0].set_xlabel(r'$x$',fontsize=30)
 axs[0].set_ylabel(r'Plankton Density', fontsize=22, color='r')
-axs[0].set_title(r'$t = {0}$',fontsize=30)
+axs[0].set_title(r'$t = {0}$'.format(timesl[0]),fontsize=30)
 axs[0].locator_params(nbins=5,axis='x')
 axs[0].locator_params(nbins=4,axis='y')
 
 axs[0].tick_params(labelsize=18)
 
-k = int(4/Swimmers.dt)
+k = int(timesl[1]/Swimmers.dt)
 axs[1].plot(Swimmers.xm,PAL[k],color='r',linewidth=2.5)
 axs[1].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
 axs[1].ticklabel_format(style='plain',axis='x')
 axs[1].set_xlim(0,Swimmers.right)
 axs[1].set_xlabel(r'$x$',fontsize=30)
-axs[1].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
+axs[1].set_title(r'$t = {0}$'.format(timesl[1]),fontsize=30)
 axs[1].locator_params(nbins=4)
 axs[1].tick_params(labelsize=18)
 
@@ -541,13 +512,13 @@ ax2.locator_params(nbins=3,axis='y')
 
 
 
-k = int(20/Swimmers.dt)
+k = int(timesl[2]/Swimmers.dt)
 axs[2].plot(Swimmers.xm,PAL[k],color='r',linewidth=2.5)
 axs[2].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
 axs[2].ticklabel_format(style='plain',axis='x')
 axs[2].set_xlim(0,Swimmers.right)
 axs[2].set_xlabel(r'$x$',fontsize=30)
-axs[2].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
+axs[2].set_title(r'$t = {0}$'.format(timesl[2]),fontsize=30)
 axs[2].locator_params(nbins=4)
 axs[2].tick_params(labelsize=18)
 axs[2].yaxis.get_offset_text().set_fontsize(15)
@@ -560,13 +531,13 @@ ax2.locator_params(nbins=5,axis='x')
 ax2.locator_params(nbins=3,axis='y')
 
 
-k = int(75/Swimmers.dt)
+k = int(timesl[3]/Swimmers.dt)
 axs[3].plot(Swimmers.xm,PAL[k],color='r',linewidth=2.5)
 axs[3].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
 axs[3].ticklabel_format(style='plain',axis='x')
 axs[3].set_xlim(0,Swimmers.right)
 axs[3].set_xlabel(r'$x$',fontsize=30)
-axs[3].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
+axs[3].set_title(r'$t = {0}$'.format(timesl[3]),fontsize=30)
 axs[3].locator_params(nbins=5)
 axs[3].tick_params(labelsize=18)
 axs[3].yaxis.get_offset_text().set_fontsize(15)
@@ -579,20 +550,18 @@ ax2.locator_params(nbins=5,axis='x')
 ax2.locator_params(nbins=3,axis='y')
 
 
-k = int(100/Swimmers.dt)
+k = int(timesl[4]/Swimmers.dt)
 axs[4].plot(Swimmers.xm,PAL[k],color='r',linewidth=2.5)
 axs[4].ticklabel_format(style='sci', scilimits=(2,2),axis='y')
 axs[4].ticklabel_format(style='plain',axis='x')
 axs[4].set_xlim(0,Swimmers.right)
 axs[4].set_xlabel(r'$x$',fontsize=30)
-axs[4].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
+axs[4].set_title(r'$t = {0}$'.format(timesl[4]),fontsize=30)
 axs[4].locator_params(nbins=4)
 axs[4].tick_params(labelsize=18)
 ax2 = axs[4].twinx()  #create a second axes that shares the same x-axis
 ax2.plot(Swimmers.xm,CAL[k],color='b',linestyle='--',linewidth=2.5)
 ax2.yaxis.get_offset_text().set_fontsize(16)
-
-#ax2.ticklabel_format(style='sci', scilimits=(-2,-2),axis='y')
 ax2.ticklabel_format(style='sci', scilimits=(-1,-1),axis='y',useMathText=True)
 ax2.set_ylabel(r'Chemical Concentration', color='blue',fontsize=22,rotation=-90,labelpad=30)
 ax2.tick_params(labelsize=18)
@@ -601,12 +570,7 @@ ax2.locator_params(nbins=4,axis='y')
 ax2.locator_params(nbins=5,axis='x')
 
 
-plt.savefig('../Final_Figures/Figure_6c')
-```
-
-```{python}
-np.save('./Data/Figure_6c_Plankton.npy',PAL[:int(len(PAL)/5)])
-np.save('./Data/Figure_6c_Chemical.npy',CAL[:int(len(CAL)/5)])
+#plt.savefig('../Final_Figures/Figure_6c')
 ```
 
 ```{python}
@@ -649,4 +613,44 @@ def animate(i):
 
 ani = matplotlib.animation.FuncAnimation(fig2, animate, init_func=init, frames=range(0,int(1000/Swimmers.dt),50), interval=1, blit=True,repeat=False)
 #ani.save('../Final_Figures/Figure_6b_Supplemental_Video.mp4', writer='ffmpeg')
+```
+
+## Figure 6d
+
+This plot shows the total chemical over time for the three different deposition functions. We must make sure to extend the plot so that all deposition functions have the same time. 
+
+```{python}
+Sums1 = []
+for j in range(len(A1)):
+    Sums1.append(np.sum(A1[j]*(5/302)))
+#extend chemical 
+Sums1 = np.append(Sums1,Sums1[-1]+np.zeros(75000))
+Sums2 = []
+for j in range(len(A2)):
+    Sums2.append(np.sum(A2[j]*(5/302)))
+Sums3 = []
+for j in range(len(A3)):
+    Sums3.append(np.sum(A3[j]*(5/302)))
+#extend chemical
+Sums3 = np.append(Sums3,Sums3[-1]+np.zeros(75000))
+```
+
+```{python}
+fig, ax = plt.subplots(figsize=(7,5),tight_layout=True)
+
+colors = ['#000000','#009E73','#D55E00'] 
+times = np.linspace(0,400,len(Sums2))
+ax.plot(times,Sums1,color=colors[0],linestyle = '--',linewidth=3,label=r'$f_1(c)$')
+ax.plot(times,Sums2,color=colors[1],linestyle = '-',linewidth=3,label=r'$f_2(c)$')
+ax.plot(times,Sums3,color=colors[2],linestyle = ':',linewidth=3,label=r'$f_3(c)$')
+ax.legend(loc=0,fontsize=19)
+ax.set_xlabel(r'Time, $t$',fontsize=20)
+ax.set_ylabel(r'Total Chemical, $C(t)$',fontsize=20)
+ax.set_title('Total Chemical Over Time',fontsize=20)
+ax.tick_params(labelsize=18)
+ax.locator_params(nbins=5,axis='x')
+ax.locator_params(nbins=4,axis='y')
+ax.ticklabel_format(style='plain',axis='x')
+ax.set_xlim(0,350)
+#plt.savefig('../Final_Figures/Fig6d.png')
 ```

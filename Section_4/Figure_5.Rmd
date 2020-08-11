@@ -210,7 +210,7 @@ axs[1,2].set_xlim(0,Swimmers.right)
 axs[0,2].set_xlim(0,Swimmers.right)
 axs[0,2].set_xlabel(r'$x$',fontsize=25)
 axs[1,2].set_xlabel(r'$x$',fontsize=25)
-axs[0,2].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=25)
+axs[0,2].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
 axs[1,2].locator_params(nbins=3)
 axs[0,2].locator_params(nbins=3)
 axs[1,2].locator_params(nbins=3,axis='y')
@@ -251,7 +251,7 @@ axs[1,3].set_xlim(0,Swimmers.right)
 axs[0,3].set_xlim(0,Swimmers.right)
 axs[0,3].set_xlabel(r'$x$',fontsize=25)
 axs[1,3].set_xlabel(r'$x$',fontsize=25)
-axs[0,3].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=25)
+axs[0,3].set_title(r'$t = {0}$'.format(round(Swimmers.dt*k)),fontsize=30)
 axs[1,3].locator_params(nbins=3,axis='y')
 axs[0,3].locator_params(nbins=3,axis='y')
 axs[2,3].locator_params(nbins=3,axis='y')
@@ -268,9 +268,5 @@ axs[2,3].tick_params(labelsize=15)
 axs[0,3].yaxis.get_offset_text().set_fontsize(15)
 axs[1,3].yaxis.get_offset_text().set_fontsize(15)
 
-plt.savefig('../Final_Figures/Figure_5')
-```
-
-```{python}
-
+plt.savefig('../Final_Figures/Fig5')
 ```

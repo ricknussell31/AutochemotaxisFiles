@@ -18,6 +18,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import PlanktonSignaling.basics as PS
 import PlanktonSignaling.Deposition as DP
+import PlanktonSignaling.PlottingMethods as PM
 import profile
 import copy
 from numpy.fft import fftfreq, fftshift, fft2
@@ -26,193 +27,97 @@ from numpy.fft import fftfreq, fftshift, fft2
 # #%load_ext Cython
 ```
 
-```{python}
-def particleProjectionFaster(pos,meshsize):
-    
-    x = r_[0:Swimmers.L:1j*meshsize] # setup the spatial mesh. It is a long row vector
-    # Create some local coordinates for the square domain.
-    y = 1*x
-    xm,ym = np.meshgrid(x,y)
-    f = np.zeros((meshsize,meshsize))
-    Std = Swimmers.depVar
-
-    boundaryCutoff = 64*Std
-    
-    intDelta = int((meshsize)*8*np.sqrt(Std)/Swimmers.L + 0.5)
-    
-    for i in range(0,Swimmers.num):
-        A, B, C, D = 0,0,0,0
-        p = pos[i,:]
-        
-        centerX = int((meshsize-1)*p[0]/Swimmers.L+0.5)
-        centerY = int((meshsize-1)*p[1]/Swimmers.L+0.5)
-        
-        lowerX      = max(0,centerX-intDelta)
-        lowerXplus  = max(0,centerX-intDelta + (meshsize-1))
-        lowerXminus = max(0,centerX-intDelta - (meshsize-1))
-        upperX      = min(meshsize,centerX+intDelta)
-        upperXplus  = min(meshsize,centerX+intDelta + (meshsize-1))
-        upperXminus = min(meshsize,centerX+intDelta - (meshsize-1))
-        lowerY      = max(0,centerY-intDelta)
-        lowerYplus  = max(0,centerY-intDelta + (meshsize-1))
-        lowerYminus = max(0,centerY-intDelta - (meshsize-1))
-        upperY      = min(meshsize,centerY+intDelta)
-        upperYplus  = min(meshsize,centerY+intDelta + (meshsize-1))
-        upperYminus = min(meshsize,centerY+intDelta - (meshsize-1))
-        
-        sliceX = slice(lowerX,upperX+1)
-        sliceY = slice(lowerY,upperY+1)
-        
-        f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
-        if ((p[0])**2<boundaryCutoff):
-            sliceX = slice(lowerXplus,upperXplus+1)
-            sliceY = slice(lowerY,upperY+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
-            A = 1
-        if ((p[0]-Swimmers.L)**2<boundaryCutoff):
-            sliceX = slice(lowerXminus,upperXminus+1)
-            sliceY = slice(lowerY,upperY+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
-            B = 1
-        if ((p[1])**2<boundaryCutoff):
-            sliceX = slice(lowerX,upperX+1)
-            sliceY = slice(lowerYplus,upperYplus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
-            C = 1
-        if ((p[1]-Swimmers.L)**2<boundaryCutoff):
-            sliceX = slice(lowerX,upperX+1)
-            sliceY = slice(lowerYminus,upperYminus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
-            D = 1
-        if (A == 1 and C == 1): #Plankton in Lower Left Corner
-            sliceX = slice(lowerXplus,upperXplus+1)
-            sliceY = slice(lowerYplus,upperYplus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
-        if (A == 1 and D == 1): #Plankton in Lower Left Corner
-            sliceX = slice(lowerXplus,upperXplus+1)
-            sliceY = slice(lowerYminus,upperYminus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
-        if (B == 1 and C == 1): #Plankton in Upper Right Corner
-            sliceX = slice(lowerXminus,upperXminus+1)
-            sliceY = slice(lowerYplus,upperYplus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
-        if (B == 1 and D == 1): #Plankton in Lower Right Corner
-            sliceX = slice(lowerXminus,upperXminus+1)
-            sliceY = slice(lowerYminus,upperYminus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
-    return xm,ym,f*(Swimmers.L**2/Swimmers.num)
-```
-
 # Figure 10
 
-This will show the evolution of a 2D simulation for varying deposition functions. The code to produce those files is shown below. The simulations will take over 7 hours, so we sugest utilizing an HPC to replicate these. We import data from the HPC here to create these plots. 
+This will show the evolution of a 2D simulation for varying deposition functions. The code to produce those files is shown below. The simulations will take over 24 hours, so we sugest utilizing an HPC to replicate these.
 
-```{python}
-meshsize = 400 #Chemical Mesh size
-numb = 400**2 #Number of plankton in simulation
-LL = 10 #Length of domain [0,L] x [0,L]
-dt = 0.02 #Time-stepping size
-TotalTime = 100 #Total time 
-simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
+See the file for Figure 9 for inputs and the paper for the description of the simulation. 
 
-#Simulation for Constant Function
-
-Swimmers = PS.Plankton(DP.constantDep,d1=.1,d2=4,N = meshsize,depMaxStr=.01,
-                        Const=3,L=LL,k=dt,epsilon=1e-3,depThreshold=0.012, 
-                    depTransWidth=0.008, num = numb, c0=0.01)
-
-#Simulation for Switch Function
-
-#Swimmers = PS.Plankton(DP.atanDep,d1=.1,d2=4,N = meshsize,depMaxStr=.01,
-#                           Const=3,L=LL,k=dt,epsilon=1e-3,depThreshold=0.012, 
-#                           depTransWidth=0.0007, num = numb, c0=0.01)
-
-#Simulation for Linear Switch Function
-#Swimmers = PS.Plankton(DP.linAtanDep,d1=.1,d2=4,N = meshsize,depMaxStr=.01,
-#                          Const=3,L=LL,k=dt,epsilon=1e-3,depThreshold=0.012, 
-#                           depTransWidth=0.008, num = numb, c0=0.01)
-
-
-Swimmers.SetIC(initial_conditions)
-
-lenn = int(np.sqrt(numb))
-pos = np.zeros((1,2))
-vel = np.zeros((1,2))
-
-#Place plankton down uniformly throughout the domain and give each a direction to travel initially
-for l in range(0,lenn):
-        for k in range(0,lenn):
-                pos = np.append(pos,[np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
-                        np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])],axis=0)
-                th  = rand()*2*pi
-                vel = np.append(vel,[np.array([np.cos(th),np.sin(th)])],axis=0)
-
-pos = np.delete(pos,0,0)
-vel = np.delete(vel,0,0)
-pos_store = list([pos[:,:]])
-pos_store = list([np.array(pos)])
-scalar_store = list([Swimmers.Meshed()])
-
-CHEM = np.zeros((simTime,meshsize,meshsize))
-POS = np.zeros((simTime,numb,2))
-CHEM[0,:,:] = scalar_store[0] #preallocate the chemical 
-POS[0,:,:] = pos_store[0] #preallocate the plankton
-```
-
-```{python}
-for k in range(1,simTime+1):
-        Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
-        CHEM[k,:,:] = Swimmers.Meshed()
-        POS[k,:,:] = pos
-```
 
 ## Plot Figure 10a
 
 This shows the evolution of plankton from a constant deposition function 
 
 ```{python}
+meshsize = 400 #Chemical Mesh size
+numb = 400**2 #Number of plankton in simulation
+LL = 10 #Length of domain [0,L] x [0,L]
+dt = 0.02 #Time-stepping size
+TotalTime = 1500 #Total time 
+simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
+
+#Simulation for Constant Function
+Swimmers = PS.Plankton(DP.constantDep,L=LL,k=dt,d1=.1,d2=4,
+                       N = meshsize, num = numb, c0=0.01,Const=3,delta=1e-3,
+                       depMaxStr=.01,depThreshold=0.012,depTransWidth=0.008)
+
+Swimmers.SetIC(initial_conditions)
+
+lenn = int(np.sqrt(numb))
+pos = np.zeros((numb,2))
+vel = np.zeros((numb,2))
+CHEMC = np.zeros((simTime,meshsize,meshsize)) #preallocate the chemical 
+POSC = np.zeros((simTime,numb,2)) #preallocate the chemical 
+
+#Place plankton down uniformly throughout the domain and give each a direction to travel initially
+#Randomness can be added if desired.
+i = 0
+for l in range(0,lenn):
+    for k in range(0,lenn):
+        pos[i,:] = np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
+                                     np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])
+        th  = np.random.rand()*2*pi
+        vel[i,:] = np.array([np.cos(th),np.sin(th)])
+        i = i + 1
+
+CHEMC[0,:,:] = Swimmers.Meshed() 
+POSC[0,:,:] = pos 
+```
+
+```{python}
+for k in range(1,simTime):
+    Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
+    CHEMC[k,:,:] = Swimmers.Meshed()
+    POSC[k,:,:] = pos
+```
+
+```{python}
 # %matplotlib notebook
 
-Ts = np.linspace(0,5000,40)
-times = [0,1,5,15,39]
-
+#Times you would like to plot
+times = [0,2,20,71,149.99]
 fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(30,6),tight_layout=True, sharey='row',sharex='col')
 fig.subplots_adjust(hspace=0.13, wspace=0.13)
 cmaps = 'Greys'
 Low = 0.75
 High = 1.25
 
-j = times[0]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_C.npy'.format(Ts[j]))
-cs = axs[0].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[0]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[0].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[0].set_title(r'$t = {0}$',fontsize=40)
 axs[0].set_ylabel(r'$y$',fontsize=40)
 
-j = times[1]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_C.npy'.format(Ts[j]))
-cs = axs[1].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[1]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[1].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[1].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
-j = times[2]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_C.npy'.format(Ts[j]))
-cs = axs[2].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[2]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[2].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[2].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
 
-j = times[3]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_C.npy'.format(Ts[j]))
-cs = axs[3].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[3]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[3].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[3].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
-j = times[4]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_C.npy'.format(Ts[j]))
-cs = axs[4].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[4]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[4].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[4].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
 for i in range(0,5):
     axs[i].set_xlabel(r'$x$',fontsize=40)
@@ -220,9 +125,10 @@ for i in range(0,5):
     axs[i].locator_params(nbins=3,axis='x')
     axs[i].locator_params(nbins=3,axis='y')
     axs[i].ticklabel_format(style='plain',axis='x')
+    axs[i].set_title(r'$t = {0}$'.format(int(times[i])),fontsize=40)
 
 
-plt.savefig('../Final_Figures/Fig10a.png')
+#plt.savefig('../Final_Figures/Fig10a.png')
 ```
 
 ## Plot Figure 10b
@@ -230,45 +136,87 @@ plt.savefig('../Final_Figures/Fig10a.png')
 This shows the evolution of plankton from a switch deposition function 
 
 ```{python}
+meshsize = 400 #Chemical Mesh size
+numb = 400**2 #Number of plankton in simulation
+LL = 10 #Length of domain [0,L] x [0,L]
+dt = 0.02 #Time-stepping size
+TotalTime = 1500 #Total time 
+simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
+
+#Simulation for Switch Function
+
+Swimmers = PS.Plankton(DP.atanDep,L=LL,k=dt,d1=.1,d2=4,
+                       N = meshsize, num = numb, c0=0.01,Const=3,delta=1e-3,
+                       depMaxStr=.01,depThreshold=0.012,depTransWidth=0.0007)
+
+
+Swimmers.SetIC(initial_conditions)
+
+lenn = int(np.sqrt(numb))
+pos = np.zeros((numb,2))
+vel = np.zeros((numb,2))
+CHEMA = np.zeros((simTime,meshsize,meshsize)) #preallocate the chemical 
+POSA = np.zeros((simTime,numb,2)) #preallocate the chemical 
+
+#Place plankton down uniformly throughout the domain and give each a direction to travel initially
+#Randomness can be added if desired.
+i = 0
+for l in range(0,lenn):
+    for k in range(0,lenn):
+        pos[i,:] = np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
+                                     np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])
+        th  = np.random.rand()*2*pi
+        vel[i,:] = np.array([np.cos(th),np.sin(th)])
+        i = i + 1
+
+CHEMA[0,:,:] = Swimmers.Meshed() 
+POSA[0,:,:] = pos 
+```
+
+```{python}
+for k in range(1,simTime):
+    Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
+    CHEMA[k,:,:] = Swimmers.Meshed()
+    POSA[k,:,:] = pos
+```
+
+```{python}
 # %matplotlib notebook
-times = [0,1,5,15,39]
+
+#Times you would like to plot
+times = [0,2,20,71,149.99]
 fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(30,6),tight_layout=True, sharey='row',sharex='col')
 fig.subplots_adjust(hspace=0.13, wspace=0.13)
 cmaps = 'Greys'
 Low = 0.75
 High = 1.25
 
-j = times[0]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_A.npy'.format(Ts[j]))
-cs = axs[0].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[0]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[0].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[0].set_title(r'$t = {0}$',fontsize=40)
 axs[0].set_ylabel(r'$y$',fontsize=40)
 
-j = times[1]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_A.npy'.format(Ts[j]))
-cs = axs[1].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[1]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[1].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[1].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
-j = times[2]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_A.npy'.format(Ts[j]))
-cs = axs[2].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[2]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[2].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[2].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
 
-j = times[3]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_A.npy'.format(Ts[j]))
-cs = axs[3].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[3]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[3].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[3].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
-j = times[4]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_A.npy'.format(Ts[j]))
-cs = axs[4].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[4]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[4].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[4].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
 for i in range(0,5):
     axs[i].set_xlabel(r'$x$',fontsize=40)
@@ -276,9 +224,10 @@ for i in range(0,5):
     axs[i].locator_params(nbins=3,axis='x')
     axs[i].locator_params(nbins=3,axis='y')
     axs[i].ticklabel_format(style='plain',axis='x')
+    axs[i].set_title(r'$t = {0}$'.format(int(times[i])),fontsize=40)
 
 
-plt.savefig('../Final_Figures/Fig10b.png')
+#plt.savefig('../Final_Figures/Fig10b.png')
 ```
 
 ## Plot Figure 10c
@@ -286,45 +235,87 @@ plt.savefig('../Final_Figures/Fig10b.png')
 This shows the evolution of plankton from a linear switch deposition function 
 
 ```{python}
+meshsize = 400 #Chemical Mesh size
+numb = 400**2 #Number of plankton in simulation
+LL = 10 #Length of domain [0,L] x [0,L]
+dt = 0.02 #Time-stepping size
+TotalTime = 1500 #Total time 
+simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
+
+
+Simulation for Linear Switch Function
+Swimmers = PS.Plankton(DP.linAtanDep,L=LL,k=dt,d1=.1,d2=4,
+                       N = meshsize, num = numb, c0=0.01,Const=3,delta=1e-3,
+                       depMaxStr=.01,depThreshold=0.012,depTransWidth=0.008)
+
+
+Swimmers.SetIC(initial_conditions)
+
+lenn = int(np.sqrt(numb))
+pos = np.zeros((numb,2))
+vel = np.zeros((numb,2))
+CHEML = np.zeros((simTime,meshsize,meshsize)) #preallocate the chemical 
+POSL = np.zeros((simTime,numb,2)) #preallocate the chemical 
+
+#Place plankton down uniformly throughout the domain and give each a direction to travel initially
+#Randomness can be added if desired.
+i = 0
+for l in range(0,lenn):
+    for k in range(0,lenn):
+        pos[i,:] = np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
+                                     np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])
+        th  = np.random.rand()*2*pi
+        vel[i,:] = np.array([np.cos(th),np.sin(th)])
+        i = i + 1
+
+CHEML[0,:,:] = Swimmers.Meshed() 
+POSL[0,:,:] = pos 
+```
+
+```{python}
+for k in range(1,simTime):
+    Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
+    CHEML[k,:,:] = Swimmers.Meshed()
+    POSL[k,:,:] = pos
+```
+
+```{python}
 # %matplotlib notebook
-times = [0,1,5,15,39]
+
+#Times you would like to plot
+times = [0,2,20,71,149.99]
 fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(30,6),tight_layout=True, sharey='row',sharex='col')
 fig.subplots_adjust(hspace=0.13, wspace=0.13)
 cmaps = 'Greys'
 Low = 0.75
 High = 1.25
 
-j = times[0]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_L.npy'.format(Ts[j]))
-cs = axs[0].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[0]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[0].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[0].set_title(r'$t = {0}$',fontsize=40)
 axs[0].set_ylabel(r'$y$',fontsize=40)
 
-j = times[1]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_L.npy'.format(Ts[j]))
-cs = axs[1].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[1]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[1].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[1].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
-j = times[2]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_L.npy'.format(Ts[j]))
-cs = axs[2].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[2]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[2].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[2].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
 
-j = times[3]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_L.npy'.format(Ts[j]))
-cs = axs[3].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[3]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[3].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[3].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
-j = times[4]
-hts = np.load('./Data/CompareFors2/PosDensT{0}_L.npy'.format(Ts[j]))
-cs = axs[4].pcolormesh(xm,ym,hts,cmap=cmaps)
+j = int(times[4]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[4].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
 cs.set_clim(Low,High)
-axs[4].set_title(r'$t = {0}$'.format(round(Ts[j]*Swimmers.k)),fontsize=40)
 
 for i in range(0,5):
     axs[i].set_xlabel(r'$x$',fontsize=40)
@@ -332,9 +323,10 @@ for i in range(0,5):
     axs[i].locator_params(nbins=3,axis='x')
     axs[i].locator_params(nbins=3,axis='y')
     axs[i].ticklabel_format(style='plain',axis='x')
+    axs[i].set_title(r'$t = {0}$'.format(int(times[i])),fontsize=40)
 
 
-plt.savefig('../Final_Figures/Fig10c.png')
+#plt.savefig('../Final_Figures/Fig10c.png')
 ```
 
 ## Figure 10d
@@ -350,7 +342,7 @@ cmap = 'Greys'
 norm = mpl.colors.Normalize(vmin=0, vmax=1)
 
 cb = fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),ticks=[0,0.5,1],
-             cax=ax, orientation='horizontal', label=r'Some Units')
+             cax=ax, orientation='horizontal')
 
 cb.ax.tick_params(labelsize=25)
 cb.set_label(r'Plankton, $\rho$',size=30)
@@ -364,14 +356,22 @@ plt.savefig('../Final_Figures/Fig10d')
 This will show the total chemical in the system over time. 
 
 ```{python}
+#Find the total amount of chemcial for all simulations
+SUMC = np.zeros(len(CHEMC))
+SUMA = np.zeros(len(CHEMA))
+SUML = np.zeros(len(CHEML))
+for i in range(len(CHEMC)):
+    SUMC[i] = np.sum(CHEMC[i]*(Swimmers.L/meshsize)**2)
+    SUMA[i] = np.sum(CHEMA[i]*(Swimmers.L/meshsize)**2)
+    SUML[i] = np.sum(CHEML[i]*(Swimmers.L/meshsize)**2)
+```
+
+```{python}
 fig, ax = plt.subplots(figsize=(7,5),tight_layout=True)
 
 colors = ['#000000','#009E73','#D55E00'] 
 
-SUMC = np.load('./Data/LongSimsOutput/TotChemC.npy')
-SUMA = np.load('./Data/LongSimsOutput/TotChemA.npy')
-SUML = np.load('./Data/LongSimsOutput/TotChemL.npy')
-times = np.linspace(0,100,5000)
+times = np.linspace(0,simTime,len(SUMC))
 
 ax.plot(times,SUMC,color=colors[0],linestyle = '--',linewidth=3,label=r'$f_1(c)$')
 ax.plot(times,SUMA,color=colors[1],linestyle = '-',linewidth=3,label=r'$f_2(c)$')
@@ -386,54 +386,50 @@ ax.set_yticks([0.96,0.98,1])
 ax.set_yticklabels([r'0.96','0.98','1.00'])
 ax.locator_params(nbins=3,axis='y')
 ax.ticklabel_format(style='plain',axis='x')
-ax.set_xlim(0,100)
-plt.savefig('../Final_Figures/Fig10e.png')
+ax.set_xlim(0,simTime)
+#plt.savefig('../Final_Figures/Fig10e.png')
 ```
 
 ## Figure 10f
+
+To understand the varied structural differences, we seek to understand the probability of finding a point in $D$ with a given plankton density at a given time $t$, i.e.
+
+$$S_t(q) = \mathbb{P}\left[ \rho(\mathbf{x}, t) = q \mid \mathbf{x} \in D \right],$$
+
+where $D = [0,\ell] \times [0,\ell]$. We calculate this function at the final time step, $S_{150}$. 
+
 
 ```{python}
 plt.figure(figsize=(7,5),tight_layout=True)
 colors = ['#000000','#009E73','#D55E00'] 
 binss = 150
-n = 39
 
-htc,xs = np.histogram(np.load('./Data/CompareFors2/PosDensT{0}_C.npy'.format(Ts[n])),
-                      bins=binss,range=(0.25,1.75),density=True)
-hts,xs = np.histogram(np.load('./Data/CompareFors2/PosDensT{0}_A.npy'.format(Ts[n])),
-                     bins=binss,range=(0.25,1.75),density=True)
-htl,xs = np.histogram(np.load('./Data/CompareFors2/PosDensT{0}_L.npy'.format(Ts[n])),
-                      bins=binss,range=(0.25,1.75),density=True)
-xs = (xs[1:] + xs[:-1])/2
-j = 0
-plt.plot(xs,htc,label=r'$f_1(c)$',color=colors[0],
-         linestyle='--',linewidth=2.4)
+xm, ym, RhoC = PM.PartProj(Swimmers,POSC[-1],400)
+xm, ym, RhoA = PM.PartProj(Swimmers,POSA[-1],400)
+xm, ym, RhoL = PM.PartProj(Swimmers,POSL[-1],400)
+xm, ym, Rho0 = PM.PartProj(Swimmers,POSC[0],400)
 
-j = 1
-plt.plot(xs,hts,label=r'$f_2(c)$',color=colors[1],
-         linestyle='-',linewidth=2.4)
-j = 2
-plt.plot(xs,htl,label=r'$f_3(c)$',color=colors[2],
-         linestyle=':',linewidth=2.4)
+htc,xs = np.histogram(RhoC.flatten(),bins=binss,range=(0.25,1.75),density=True)
+hta,xs = np.histogram(RhoA.flatten(),bins=binss,range=(0.25,1.75),density=True)
+htl,xs = np.histogram(RhoL.flatten(),bins=binss,range=(0.25,1.75),density=True)
+ht0,xs0 = np.histogram(Rho0.flatten(),bins=400,range=(0.25,1.75),density=True)
 
-vs = np.linspace(0.25,1.75,3000)
-vsd = np.zeros(3000)
-vsd[int((len(vs)-1)/2)] = 100
-plt.plot(vs,vsd,linestyle='-.',color='m',linewidth = 2,alpha=0.5,label=r'$S_0$')
+xmids = (xs[1:] + xs[:-1])/2
+plt.plot(xmids,htc,label=r'$f_1(c)$',color=colors[0],linestyle='--',linewidth=2.4)
+plt.plot(xmids,hta,label=r'$f_2(c)$',color=colors[1],linestyle='-',linewidth=2.4)
+plt.plot(xmids,htl,label=r'$f_3(c)$',color=colors[2],linestyle=':',linewidth=2.4)
+
+xmids0 = (xs0[1:] + xs0[:-1])/2
+plt.plot(xmids0,ht0,linestyle='-.',color='m',linewidth = 2,alpha=0.5,label=r'$S_0$')
 
 plt.xticks([0.5,1.0,1.5],[r'$\overline{\rho}$/2',r'$\overline{\rho}$',r'$3\overline{\rho}$/2'],fontsize=18)
 plt.yticks([0,1,2,3],fontsize=18)
 
 plt.xlabel(r'Plankton Density',fontsize=24)
-plt.ylabel(r'$S_{100}$',fontsize=28)
-plt.title(r'Probability Density Function, $S_{100}$',fontsize=20)
+plt.ylabel(r'$S_{150}$',fontsize=28)
+plt.title(r'Probability Density Function, $S_{150}$',fontsize=20)
 plt.legend(fontsize=19)
-plt.show()
 plt.ylim(-.1,3)
 plt.xlim(0.25,1.75)
-plt.savefig('../Final_Figures/Fig10f.png')
-```
-
-```{python}
-
+#plt.savefig('../Final_Figures/Fig10f.png')
 ```

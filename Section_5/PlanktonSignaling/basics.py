@@ -156,7 +156,7 @@ class Background_Field(object):
 
 class Plankton(Background_Field):
     
-    def __init__(self,depFcn,d1=0.1,d2=0.1,k=0.02,Const = 3,depMaxStr=1.0e-10,epsilon=1.0e-8,
+    def __init__(self,depFcn,d1=0.1,d2=0.1,k=0.02,Const = 3,depMaxStr=1.0e-10,delta=1.0e-8,
                  depTransWidth=0.001,depThreshold=0.008,num = 400,c0=0.012,*args,**kwargs):
         
         self.k = k #k is delta t
@@ -173,7 +173,7 @@ class Plankton(Background_Field):
         self.args = args
         self.kwargs = kwargs
         
-        self.epsilon = epsilon
+        self.delta = delta
 
         super(Plankton,self).__init__(d1=self.d1, d2=self.d2,k=self.k,*args,**kwargs)
         self.density = self.d2*self.c0/self.depFcn(self.c0,self.depMaxStr,self.depThreshold,self.depTransWidth)
@@ -181,7 +181,7 @@ class Plankton(Background_Field):
     def RT(self,pos,vel,c,grad_c):
         # Actually, I need to do this as tumble and run, TR.
         for j in range(0,len(pos)):
-            alpha = 1/(self.epsilon + sqrt(dot(grad_c[j],grad_c[j])*dot(vel[j],vel[j])))
+            alpha = 1/(self.delta + sqrt(dot(grad_c[j],grad_c[j])*dot(vel[j],vel[j])))
             if (rand() < self.k*0.5*(1-alpha*dot(vel[j],grad_c[j]))):
                 th = rand()*2*pi
                 vel[j] = array([cos(th),sin(th)])
@@ -370,8 +370,8 @@ class Plankton(Background_Field):
         MD = zeros(2*s+1,dtype=complex) + -1/2
         MD[s]=0
         N = sparse.diags([MD,SupD,SubD],[0,1,-1])
-        Z[s-1]=-psib*kappa*1j/(4*self.epsilon)
-        Z[s+1]=-psib*kappab*1j/(4*self.epsilon)
+        Z[s-1]=-psib*kappa*1j/(4*self.delta)
+        Z[s+1]=-psib*kappab*1j/(4*self.delta)
         F = sparse.hstack([sparse.bsr_matrix(Z),N])
         M = zeros((1,2*s+2),dtype=complex)
         M[0,0] = d3 - self.d1*(k1**2 + k2**2)

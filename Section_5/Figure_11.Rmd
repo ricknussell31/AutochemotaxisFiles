@@ -26,153 +26,62 @@ from numpy.fft import fftfreq, fftshift, fft2
 # #%load_ext Cython
 ```
 
-# Figure 10
+# Figure 11
 
-This will show the evolution of a 2D simulation. We have the data provided already for you in the Data files to use. The code to produce those files is shown below. The simulation will take over 7 hours, so we sugest utilizing an HPC to replicate these.
+This will show the evolution of a 2D simulation for varying $\delta$ values. The code to produce those files is shown below. The simulations will take over 24 hours, so we sugest utilizing an HPC to replicate these.
+
+See the file for Figure 9 for inputs and the paper for the description of the simulation. 
 
 ```{python}
+deltas = [1e-2,1e-3,1e-4,1e-5]
 meshsize = 400 #Chemical Mesh size
 numb = 400**2 #Number of plankton in simulation
+lenn = int(np.sqrt(numb))
 LL = 10 #Length of domain [0,L] x [0,L]
 dt = 0.02 #Time-stepping size
-TotalTime = 20 #Total time 
+TotalTime = 1500 #Total time 
 simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
 
-Swimmers = PS.Plankton(DP.constantDep,d1=.1,d2=4,N = meshsize,depMaxStr=.01,
-                           Const=3,L=LL,k=dt,epsilon=1e-3,depThreshold=0.012, 
-                           depTransWidth=0.008, num = numb, c0=0.01)
-```
+Planks = np.zeros((4,meshsize,meshsize))
 
-```{python}
-Swimmers.SetIC(initial_conditions)
+for i in range(len(deltas)):
+    Swimmers = PS.Plankton(DP.constantDep,L=LL,k=dt,d1=.1,d2=4,
+                           N = meshsize, num = numb, c0=0.01,Const=3,delta=deltas[i],
+                           depMaxStr=.01,depThreshold=0.012,depTransWidth=0.008)
 
-lenn = int(np.sqrt(numb))
-pos = np.zeros((1,2))
-vel = np.zeros((1,2))
+    Swimmers.SetIC(initial_conditions)
 
-#Place plankton down uniformly throughout the domain and give each a direction to travel initially
-for l in range(0,lenn):
+    pos = np.zeros((numb,2))
+    vel = np.zeros((numb,2))
+    CHEM = np.zeros((simTime,meshsize,meshsize)) #preallocate the chemical 
+    POS = np.zeros((simTime,numb,2)) #preallocate the chemical 
+
+    #Place plankton down uniformly throughout the domain and give each a direction to travel initially
+    #Randomness can be added if desired.
+    i = 0
+    for l in range(0,lenn):
         for k in range(0,lenn):
-                pos = np.append(pos,[np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
-                        np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])],axis=0)
-                th  = rand()*2*pi
-                vel = np.append(vel,[np.array([np.cos(th),np.sin(th)])],axis=0)
+            pos[i,:] = np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
+                                         np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])
+            th  = np.random.rand()*2*pi
+            vel[i,:] = np.array([np.cos(th),np.sin(th)])
+            i = i + 1
 
-pos = np.delete(pos,0,0)
-vel = np.delete(vel,0,0)
-pos_store = list([pos[:,:]])
-pos_store = list([np.array(pos)])
-scalar_store = list([Swimmers.Meshed()])
-
-CHEM = np.zeros((simTime,meshsize,meshsize))
-POS = np.zeros((simTime,numb,2))
-CHEM[0,:,:] = scalar_store[0] #preallocate the chemical 
-POS[0,:,:] = pos_store[0] #preallocate the 
-```
-
-```{python}
-for k in range(1,simTime+1):
+    CHEM[0,:,:] = Swimmers.Meshed() 
+    POS[0,:,:] = pos
+    
+    for k in range(1,simTime):
         Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
         CHEM[k,:,:] = Swimmers.Meshed()
         POS[k,:,:] = pos
-np.save('./Data/PosSim_C.npy',POS)
-np.save('./Data/ChemSim_C.npy',CHEM)
+    
+    xm, ym, ContoursSlice = PM.PartProj(Swimmers,POS[-1],400)
+    Planks[i,:,:] = ContoursSlice
 ```
 
 ### Plot the figure
 
 Make sure to run the function below.
-
-```{python}
-def particleProjectionFaster(pos,meshsize):
-    
-    x = r_[0:Swimmers.L:1j*meshsize] # setup the spatial mesh. It is a long row vector
-    # Create some local coordinates for the square domain.
-    y = 1*x
-    xm,ym = np.meshgrid(x,y)
-    f = np.zeros((meshsize,meshsize))
-    Std = Swimmers.depVar
-
-    boundaryCutoff = 64*Std
-    
-    intDelta = int((meshsize)*8*np.sqrt(Std)/Swimmers.L + 0.5)
-    
-    for i in range(0,Swimmers.num):
-        A, B, C, D = 0,0,0,0
-        p = pos[i,:]
-        
-        centerX = int((meshsize-1)*p[0]/Swimmers.L+0.5)
-        centerY = int((meshsize-1)*p[1]/Swimmers.L+0.5)
-        
-        lowerX      = max(0,centerX-intDelta)
-        lowerXplus  = max(0,centerX-intDelta + (meshsize-1))
-        lowerXminus = max(0,centerX-intDelta - (meshsize-1))
-        upperX      = min(meshsize,centerX+intDelta)
-        upperXplus  = min(meshsize,centerX+intDelta + (meshsize-1))
-        upperXminus = min(meshsize,centerX+intDelta - (meshsize-1))
-        lowerY      = max(0,centerY-intDelta)
-        lowerYplus  = max(0,centerY-intDelta + (meshsize-1))
-        lowerYminus = max(0,centerY-intDelta - (meshsize-1))
-        upperY      = min(meshsize,centerY+intDelta)
-        upperYplus  = min(meshsize,centerY+intDelta + (meshsize-1))
-        upperYminus = min(meshsize,centerY+intDelta - (meshsize-1))
-        
-        sliceX = slice(lowerX,upperX+1)
-        sliceY = slice(lowerY,upperY+1)
-        
-        f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
-        if ((p[0])**2<boundaryCutoff):
-            sliceX = slice(lowerXplus,upperXplus+1)
-            sliceY = slice(lowerY,upperY+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
-            A = 1
-        if ((p[0]-Swimmers.L)**2<boundaryCutoff):
-            sliceX = slice(lowerXminus,upperXminus+1)
-            sliceY = slice(lowerY,upperY+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1])**2)/4/Std)
-            B = 1
-        if ((p[1])**2<boundaryCutoff):
-            sliceX = slice(lowerX,upperX+1)
-            sliceY = slice(lowerYplus,upperYplus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
-            C = 1
-        if ((p[1]-Swimmers.L)**2<boundaryCutoff):
-            sliceX = slice(lowerX,upperX+1)
-            sliceY = slice(lowerYminus,upperYminus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0])**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
-            D = 1
-        if (A == 1 and C == 1): #Plankton in Lower Left Corner
-            sliceX = slice(lowerXplus,upperXplus+1)
-            sliceY = slice(lowerYplus,upperYplus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
-        if (A == 1 and D == 1): #Plankton in Lower Left Corner
-            sliceX = slice(lowerXplus,upperXplus+1)
-            sliceY = slice(lowerYminus,upperYminus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]-Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
-        if (B == 1 and C == 1): #Plankton in Upper Right Corner
-            sliceX = slice(lowerXminus,upperXminus+1)
-            sliceY = slice(lowerYplus,upperYplus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]-Swimmers.L)**2)/4/Std)
-        if (B == 1 and D == 1): #Plankton in Lower Right Corner
-            sliceX = slice(lowerXminus,upperXminus+1)
-            sliceY = slice(lowerYminus,upperYminus+1)
-            f[sliceY,sliceX] = f[sliceY,sliceX] + (1/(4*pi*Std))*np.exp(-((xm[sliceY,sliceX]-p[0]+Swimmers.L)**2+(ym[sliceY,sliceX]-p[1]+Swimmers.L)**2)/4/Std)
-    return xm,ym,f*(Swimmers.L**2/Swimmers.num)
-```
-
-```{python}
-pos_store0 = np.load('./LongSims/PosSim_Delta0.npy')
-```
-
-```{python}
-pos_store1 = np.load('./LongSims/PosSim_Delta1.npy')
-pos_store2 = np.load('./LongSims/PosSim_Delta2.npy')
-pos_store3 = np.load('./LongSims/PosSim_Delta3.npy')
-```
-
-```{python}
-xm, ym, ContoursSlice = particleProjectionFaster(POSC[0],400)
-```
 
 ```{python}
 # %matplotlib notebook
@@ -462,6 +371,49 @@ for i in range(0,5):
 
 ```{python}
 # %matplotlib notebook
+x = r_[0:Swimmers.L:1j*400] # setup the spatial mesh. It is a long row vector
+# Create some local coordinates for the square domain.
+y = 1*x
+xm,ym = np.meshgrid(x,y)
+fig, axs = plt.subplots(nrows=1, ncols=3,figsize=(18,6),tight_layout=True, sharey='row',sharex='col')
+fig.subplots_adjust(hspace=0.13, wspace=0.13)
+cmaps = 'Greys'
+Low = 0.5
+High = 1.5
+
+j = times[0]
+hts = np.load('./Data/LongSimsOutput/PosDensNewEnd_C.npy')
+cs = axs[0].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0].set_title(r'$f_1(c)$',fontsize=40)
+axs[0].set_ylabel(r'$y$',fontsize=40)
+
+j = times[1]
+hts = np.load('./Data/LongSimsOutput/PosDensNewEnd_A.npy')
+cs = axs[1].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[1].set_title(r'$f_2(c)$',fontsize=40)
+
+j = times[2]
+hts = np.load('./Data/LongSimsOutput/PosDensNewEnd_L.npy')
+cs = axs[2].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[2].set_title(r'$f_3(c)$',fontsize=40)
+
+
+for i in range(0,3):
+    axs[i].set_xlabel(r'$x$',fontsize=40)
+    axs[i].tick_params(labelsize=27)
+    axs[i].locator_params(nbins=3,axis='x')
+    axs[i].locator_params(nbins=3,axis='y')
+    axs[i].ticklabel_format(style='plain',axis='x')
+
+
+#plt.savefig('../Final_Figures/Fig10a.png')
+```
+
+```{python}
+# %matplotlib notebook
 
 fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(30,6),tight_layout=True, sharey='row',sharex='col')
 fig.subplots_adjust(hspace=0.13, wspace=0.13)
@@ -646,6 +598,112 @@ axs[1].set_title(r'$t = {0}$'.format(round(j*Swimmers.k)),fontsize=40)
 ```
 
 ```{python}
+fig, axs = plt.subplots(nrows=3, ncols=5,figsize=(25,13), tight_layout = True, sharey='row',sharex='col')
+fig.subplots_adjust(hspace=0.13, wspace=0.13)
+cmaps = 'Greys'
+Low = 0.6
+High = 1.4
+Ts2 = np.linspace(0,4999,50,dtype=int)
+xm = np.load('./Data/DeltaProg2/PlankDensX.npy')
+ym = np.load('./Data/DeltaProg2/PlankDensY.npy')
+
+n = 2
+#htc = np.load('./Data/PosDensFT{0}_.npy')
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(4,Ts2[n]))
+cs = axs[0,0].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0,0].set_title(r'$\delta = 10^{-2}$',fontsize=40)
+axs[0,0].set_ylabel(r'$y$',fontsize=30)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(3,Ts2[n]))
+cs = axs[0,1].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0,1].set_title(r'$\delta = 10^{-3}$',fontsize=40)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(2,Ts2[n]))
+cs = axs[0,2].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0,2].set_title(r'$\delta = 10^{-4}$',fontsize=40)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(1,Ts2[n]))
+cs = axs[0,3].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0,3].set_title(r'$\delta = 10^{-5}$',fontsize=40)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(0,Ts2[n]))
+cs = axs[0,4].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0,4].set_title(r'$\delta = 10^{-6}$',fontsize=40)
+ax2 = axs[0,4].twinx()
+ax2.set_ylabel(r'$t = {0}$'.format(round(Ts2[n]*.02,1)),fontsize=40,rotation=270,labelpad=40)
+ax2.set_yticks([])
+
+n = 18
+
+#htc = np.load('./Data/PosDensFT{0}_.npy')
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(4,Ts2[n]))
+cs = axs[1,0].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[1,0].set_ylabel(r'$y$',fontsize=30)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(3,Ts2[n]))
+cs = axs[1,1].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(2,Ts2[n]))
+cs = axs[1,2].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(1,Ts2[n]))
+cs = axs[1,3].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(0,Ts2[n]))
+cs = axs[1,4].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+ax2 = axs[1,4].twinx()
+ax2.set_ylabel(r'$t = {0}$'.format(round(Ts2[n]*.02,1)),fontsize=40,rotation=270,labelpad=40)
+ax2.set_yticks([])
+
+
+n = 49
+
+#htc = np.load('./Data/PosDensFT{0}_.npy')
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(4,Ts2[n]))
+cs = axs[2,0].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[2,0].set_ylabel(r'$y$',fontsize=30)
+axs[2,0].set_xlabel(r'$x$',fontsize=30)
+
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(3,Ts2[n]))
+cs = axs[2,1].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[2,1].set_xlabel(r'$x$',fontsize=30)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(2,Ts2[n]))
+cs = axs[2,2].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[2,2].set_xlabel(r'$x$',fontsize=30)
+
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(1,Ts2[n]))
+cs = axs[2,3].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[2,3].set_xlabel(r'$x$',fontsize=30)
+
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(0,Ts2[n]))
+cs = axs[2,4].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[2,4].set_xlabel(r'$x$',fontsize=30)
+ax2 = axs[2,4].twinx()
+ax2.set_ylabel(r'$t = {0}$'.format(round(Ts2[n]*.02,1)),fontsize=40,rotation=270,labelpad=40)
+ax2.set_yticks([])
+
+```
+
+```{python}
 F0 = ContoursSlice0.flatten()
 F1 = ContoursSlice1.flatten()
 F2 = ContoursSlice2.flatten()
@@ -661,22 +719,104 @@ Ts
 plt.figure()
 colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000'] #Using IBM Colorblind Scheme 
 markers = ['o','p','s','^','D']
-delts = [2,3,4,5,6]
-Xs = np.load('./Data/LongSimsOutput/PosDensDeltaX.npy')
+delts = [3,4,5,6]
+Xs = np.load('./Data/DeltaProg2/ChemDensFX.npy')
+XS = (Xs[1:] + Xs[:-1])/2
 i = 0
-for j in [4,3,2,1,0]:
-    A = np.load('./Data/LongSimsOutput/PosDensDelta{0}.npy'.format(j))
-    plt.plot(Xs,A,label=r'$\delta = 1e{0}$'.format(-1*delts[i]),color=colors[j],
+for j in [3,2,1,0]:
+    A = np.load('./Data/DeltaProg2/PlankDensFlatDelta{0}_T4999.npy'.format(j))
+    plt.plot(XS,A,label=r'$\delta = 1e{0}$'.format(-1*delts[i]),color=colors[j],
              marker=markers[j],markevery=5,linewidth=2.4)
     i = i + 1
 plt.legend(loc=0)
-plt.xticks([0.5,1.0,1.5],[r'$0.5\overline{\rho}$',r'$\overline{\rho}$',r'$1.5\overline{\rho}$'])
+#plt.xticks([0.5,1.0,1.5],[r'$0.5\overline{\rho}$',r'$\overline{\rho}$',r'$1.5\overline{\rho}$'])
 plt.xlabel('Plakton Density')
 plt.ylabel('Proportion')
-plt.title(r'Histogram of Plankton Density: $T = 100$'.format(8))
+plt.title(r'Histogram of Plankton Density: $t = 100$'.format(8))
 plt.legend()
 #plt.ylim(-10,400)
 plt.show()
+```
+
+```{python}
+# %matplotlib notebook
+
+plt.figure(figsize=(7,5),tight_layout=True)
+colors = ['#D55E00','#000000','#882255','#009E73']
+markers = ['o','+','|','*']
+linestyles = ['-', '--', '-.', ':']
+delts = [3,4,5,6]
+Xs = np.load('./Data/DeltaProg2/ChemDensFX.npy')
+XS = (Xs[1:] + Xs[:-1])/2
+i = 0
+n=49
+for j in [3,2,1,0]:
+    A = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(j,Ts2[n]))
+    ht,xs = np.histogram(A.flatten(),bins=100,range=(.3,2.5),density=True)
+    plt.plot((xs[1:]+xs[:-1])/2,ht,label=r'$\delta = 10^{{{}}}$'.format(-1*delts[i]),color=colors[i],
+             linestyle=linestyles[i],markevery=40,linewidth=2.4)
+    i = i + 1
+plt.legend(loc=0)
+#plt.xticks([0.5,1.0,1.5],[r'$0.5\overline{\rho}$',r'$\overline{\rho}$',r'$1.5\overline{\rho}$'])
+plt.xlabel('Plakton Density')
+plt.ylabel('Proportion')
+plt.title(r'Histogram of Plankton Density: $t = 100$'.format(8))
+plt.legend()
+plt.xticks([.5,1.0,1.5,2.0],[r'$\overline{\rho}/2$',r'$\overline{\rho}$',r'$3\overline{\rho}/2$',r'$2\overline{\rho}$'],fontsize=18)
+plt.yticks([0,1,2],fontsize=18)
+
+plt.xlabel(r'Plankton Density',fontsize=24)
+plt.ylabel(r'$S_{100}$',fontsize=28)
+plt.title(r'Probability Density Function, $S_{100}$',fontsize=20)
+plt.legend(fontsize=19)
+plt.show()
+plt.ylim(-.1,2.1)
+#plt.xlim(0.25,1.75)
+plt.show()
+```
+
+```{python}
+# %matplotlib inline
+
+fig, axs = plt.subplots(nrows=1, ncols=4,figsize=(25,7), tight_layout = True, sharey='row',sharex='col')
+fig.subplots_adjust(hspace=0.13, wspace=0.13)
+cmaps = 'Greys'
+Low = 0.5
+High = 1.75
+Ts2 = np.linspace(0,4999,50,dtype=int)
+xm = np.load('./Data/DeltaProg2/PlankDensX.npy')
+ym = np.load('./Data/DeltaProg2/PlankDensY.npy')
+
+n = 49
+#htc = np.load('./Data/PosDensFT{0}_.npy')
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(3,Ts2[n]))
+cs = axs[0].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0].set_title(r'$\delta = 10^{-3}$',fontsize=40)
+axs[0].set_ylabel(r'$y$',fontsize=40)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(2,Ts2[n]))
+cs = axs[1].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[1].set_title(r'$\delta = 10^{-4}$',fontsize=40)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(1,Ts2[n]))
+cs = axs[2].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[2].set_title(r'$\delta = 10^{-5}$',fontsize=40)
+
+hts = np.load('./Data/DeltaProg2/PlankDensDelta{0}_T{1}.npy'.format(0,Ts2[n]))
+cs = axs[3].pcolormesh(xm,ym,hts,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[3].set_title(r'$\delta = 10^{-6}$',fontsize=40)
+
+for i in range(4):
+    axs[i].set_xlabel(r'$x$',fontsize=40)
+    axs[i].tick_params(labelsize=27)
+    axs[i].locator_params(nbins=3,axis='x')
+    axs[i].locator_params(nbins=3,axis='y')
+    axs[i].ticklabel_format(style='plain',axis='x')
+
 ```
 
 ```{python}
@@ -1067,12 +1207,6 @@ cb.set_label(r'Plankton, $\rho$',size=30)
 
 cb.ax.set_xticklabels([r'$3\overline{\rho}/4$',r'$\overline{\rho}$',r'$5\overline{\rho}/4$'])
 plt.savefig('../Final_Figures/Fig10d')
-```
-
-```{python}
-pos_store3 = np.load('./Data/LongSimsOutput/POS1_C.npy')
-plt.figure()
-plt.pcolormesh(xm,ym,pos_store3,cmap=cmaps)
 ```
 
 ```{python}
