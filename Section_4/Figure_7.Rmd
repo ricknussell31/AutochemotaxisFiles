@@ -93,7 +93,7 @@ ax1.yaxis.get_offset_text().set_fontsize(15)
 ax1.set_title(r'Steady State: Plankton Density',fontsize=19)
 
 plt.legend(loc=1)
-plt.savefig('../Final_Figures/Figure_7a')
+plt.savefig('../Final_Figures/Fig7a')
 ```
 
 ```{python}
@@ -117,5 +117,9 @@ ax1.yaxis.get_offset_text().set_fontsize(15)
 ax1.set_title(r'Steady State: Chemical',fontsize=19)
 
 plt.legend(loc=1)
-plt.savefig('../Final_Figures/Figure_7b')
+plt.savefig('../Final_Figures/Fig7b')
+```
+
+```{python}
+
 ```
