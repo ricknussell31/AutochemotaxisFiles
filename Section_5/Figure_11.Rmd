@@ -20,6 +20,8 @@ import PlanktonSignaling.basics as PS
 import PlanktonSignaling.Deposition as DP
 import PlanktonSignaling.PlottingMethods as PM
 import profile
+import copy
+from numpy.fft import fftfreq, fftshift, fft2
 # %matplotlib notebook
 
 # #%load_ext Cython
@@ -27,132 +29,311 @@ import profile
 
 # Figure 11
 
-This will show the evolution of a 2D simulation for varying $\delta$ values. The code to produce those files is shown below. The simulations will take over 24 hours, so we sugest utilizing an HPC to replicate these.
+This file will have three figures, showing the differences between the three deposition functions. We utilized the average of 6 simulations to create each of the files below. We only show how to use it for one simulation, but this can easily be adapted for multiple simulations. 
+
+Note that the simulations will take days to complete, so we sugest utilizing an HPC to replicate these.
 
 See the file for Figure 9 for inputs and the paper for the description of the simulation. 
 
+
+### Constant Deposition Function
+
 ```{python}
-deltas = [1e-3,1e-4,1e-5,1e-6]
 meshsize = 400 #Chemical Mesh size
 numb = 400**2 #Number of plankton in simulation
-lenn = int(np.sqrt(numb))
 LL = 10 #Length of domain [0,L] x [0,L]
 dt = 0.02 #Time-stepping size
-TotalTime = 1500 #Total time 
+TotalTime = 300 #Total time 
 simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
 
-Planks = np.zeros((4,meshsize,meshsize))
+#Simulation for Constant Function
+Swimmers = PS.Plankton(DP.constantDep,L=LL,k=dt,d1=.1,d2=4,
+                       N = meshsize, num = numb, c0=0.01,Const=3,delta=1e-3,
+                       depMaxStr=.01,depThreshold=0.012,depTransWidth=0.008)
 
-for i in range(len(deltas)):
-    Swimmers = PS.Plankton(DP.constantDep,L=LL,k=dt,d1=.1,d2=4,
-                           N = meshsize, num = numb, c0=0.01,Const=3,delta=deltas[i],
-                           depMaxStr=.01,depThreshold=0.012,depTransWidth=0.008)
+Swimmers.SetIC(initial_conditions)
 
-    Swimmers.SetIC(initial_conditions)
+lenn = int(np.sqrt(numb))
+pos = np.zeros((numb,2))
+vel = np.zeros((numb,2))
+CHEMC = np.zeros((simTime,meshsize,meshsize)) #preallocate the chemical 
+POSC = np.zeros((simTime,numb,2)) #preallocate the chemical 
 
-    pos = np.zeros((numb,2))
-    vel = np.zeros((numb,2))
-    CHEM = np.zeros((simTime,meshsize,meshsize)) #preallocate the chemical 
-    POS = np.zeros((simTime,numb,2)) #preallocate the chemical 
-
-    #Place plankton down uniformly throughout the domain and give each a direction to travel initially
-    #Randomness can be added if desired.
-    i = 0
-    for l in range(0,lenn):
-        for k in range(0,lenn):
-            pos[i,:] = np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
-                                         np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])
-            th  = np.random.rand()*2*pi
-            vel[i,:] = np.array([np.cos(th),np.sin(th)])
-            i = i + 1
-
-    CHEM[0,:,:] = Swimmers.Meshed() 
-    POS[0,:,:] = pos
-    
-    for k in range(1,simTime):
-        Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
-        CHEM[k,:,:] = Swimmers.Meshed()
-        POS[k,:,:] = pos
-    
-    xm, ym, ContoursSlice = PM.PartProj(Swimmers,POS[-1],400)
-    Planks[i,:,:] = ContoursSlice
-```
-
-### Figure 11a
-
-This plots the final timestep for all of the deltas. You should note that as delta decreases, the peaks should get much more steep. 
-
-```{python}
-fig, axs = plt.subplots(nrows=1, ncols=4,figsize=(24,4.5), sharey='row',sharex='col')
-fig.subplots_adjust(hspace=0.16, wspace=0.1)
-cmaps = 'Greys'
-Low = 0.3
-High = 1.7
-
-#htc = np.load('./Data/PosDensFT{0}_.npy')
-
-xm, ym, Contours = PM.PartProj(Swimmers,Planks[0],400)
-cs = axs[0].pcolormesh(xm,ym,Contours,cmap=cmaps)
-cs.set_clim(Low,High)
-axs[0].set_title(r'$\delta = 10^{-3}$',fontsize=40)
-axs[0].set_ylabel(r'$y$',fontsize=30)
-
-xm, ym, Contours = PM.PartProj(Swimmers,Planks[1],400)
-cs = axs[1].pcolormesh(xm,ym,Contours,cmap=cmaps)
-cs.set_clim(Low,High)
-axs[1].set_title(r'$\delta = 10^{-4}$',fontsize=40)
-
-xm, ym, Contours = PM.PartProj(Swimmers,Planks[2],400)
-cs = axs[2].pcolormesh(xm,ym,Contours,cmap=cmaps)
-cs.set_clim(Low,High)
-axs[2].set_title(r'$\delta = 10^{-5}$',fontsize=40)
-
-xm, ym, Contours = PM.PartProj(Swimmers,Planks[3],400)
-cs = axs[3].pcolormesh(xm,ym,Contours,cmap=cmaps)
-cs.set_clim(Low,High)
-axs[3].set_title(r'$\delta = 10^{-6}$',fontsize=40)
-
-for i in range(0,4):
-    axs[i].set_xlabel(r'$x$',fontsize=40)
-    axs[i].tick_params(labelsize=25)
-    axs[i].locator_params(nbins=3,axis='x')
-    axs[i].locator_params(nbins=3,axis='y')
-    axs[i].ticklabel_format(style='plain',axis='x')
-    
-cbar2 = fig.colorbar(cs,ticks = [.5,1,1.5],
-                    ax=axs.ravel().tolist(),location='right',pad=0.01,shrink=0.8)
-cbar2.update_ticks()
-cbar2.ax.tick_params(labelsize=25)
-cbar2.set_label(r'Plankton, $\rho$',size=30)
-cbar2.ax.set_yticklabels([r'$\overline{\rho}/2$',r'$\overline{\rho}$',r'$3\overline{\rho}/2$'])
-plt.savefig('../Final_Figures/Fig11a.png')
-```
-
-### Figure 11b
-
-This plots the function $S_{150}$ for all of the deltas (see Fig. 10). You should note that as delta decreases, the histograms should become more skewed right. 
-
-```{python}
-# %matplotlib notebook
-
-plt.figure(figsize=(7,5),tight_layout=True)
-colors = ['#D55E00','#000000','#882255','#009E73']
-linestyles = ['-', '--', '-.', ':']
-delts = [3,4,5,6]
+#Place plankton down uniformly throughout the domain and give each a direction to travel initially
+#Randomness can be added if desired.
 i = 0
-n=49
-for j in range(0,len(deltas)):
-    ht,xs = np.histogram(Planks[j].flatten(),bins=100,range=(0,2.25),density=True)
-    plt.plot((xs[1:]+xs[:-1])/2,ht,label=r'$\delta = 10^{{{}}}$'.format(-1*delts[i]),color=colors[i],
-             linestyle=linestyles[i],linewidth=2.4)
-    i = i + 1
-plt.xticks([.5,1.0,1.5,2.0],[r'$\overline{\rho}/2$',r'$\overline{\rho}$',r'$3\overline{\rho}/2$',r'$2\overline{\rho}$'],fontsize=18)
-plt.yticks([0,0.5,1,1.5],fontsize=18)
-plt.ylim(-.1,1.3)
-plt.xlim(0,2.25)
-plt.xlabel(r'Plankton Density',fontsize=24)
-plt.ylabel(r'$S_{150}$',fontsize=28)
-plt.title(r'Probability Density Function, $S_{150}$',fontsize=20)
-plt.legend(fontsize=18,loc=0)
-plt.show()
+for l in range(0,lenn):
+    for k in range(0,lenn):
+        pos[i,:] = np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
+                                     np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])
+        th  = np.random.rand()*2*pi
+        vel[i,:] = np.array([np.cos(th),np.sin(th)])
+        i = i + 1
+
+CHEMC[0,:,:] = Swimmers.Meshed() 
+POSC[0,:,:] = pos 
+for k in range(1,simTime):
+    Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
+    CHEMC[k,:,:] = Swimmers.Meshed()
+    POSC[k,:,:] = pos
+```
+
+### Switch Deposition Function
+
+```{python}
+meshsize = 400 #Chemical Mesh size
+numb = 400**2 #Number of plankton in simulation
+LL = 10 #Length of domain [0,L] x [0,L]
+dt = 0.02 #Time-stepping size
+TotalTime = 300 #Total time 
+simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
+
+#Simulation for Switch Function
+
+Swimmers = PS.Plankton(DP.atanDep,L=LL,k=dt,d1=.1,d2=4,
+                       N = meshsize, num = numb, c0=0.01,Const=3,delta=1e-3,
+                       depMaxStr=.01,depThreshold=0.012,depTransWidth=0.0007)
+
+
+Swimmers.SetIC(initial_conditions)
+
+lenn = int(np.sqrt(numb))
+pos = np.zeros((numb,2))
+vel = np.zeros((numb,2))
+CHEMA = np.zeros((simTime,meshsize,meshsize)) #preallocate the chemical 
+POSA = np.zeros((simTime,numb,2)) #preallocate the chemical 
+
+#Place plankton down uniformly throughout the domain and give each a direction to travel initially
+#Randomness can be added if desired.
+i = 0
+for l in range(0,lenn):
+    for k in range(0,lenn):
+        pos[i,:] = np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
+                                     np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])
+        th  = np.random.rand()*2*pi
+        vel[i,:] = np.array([np.cos(th),np.sin(th)])
+        i = i + 1
+
+CHEMA[0,:,:] = Swimmers.Meshed() 
+POSA[0,:,:] = pos 
+for k in range(1,simTime):
+    Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
+    CHEMA[k,:,:] = Swimmers.Meshed()
+    POSA[k,:,:] = pos
+```
+
+### Linear Switch Function
+
+```{python}
+meshsize = 400 #Chemical Mesh size
+numb = 400**2 #Number of plankton in simulation
+LL = 10 #Length of domain [0,L] x [0,L]
+dt = 0.02 #Time-stepping size
+TotalTime = 300 #Total time 
+simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
+
+
+Simulation for Linear Switch Function
+Swimmers = PS.Plankton(DP.linAtanDep,L=LL,k=dt,d1=.1,d2=4,
+                       N = meshsize, num = numb, c0=0.01,Const=3,delta=1e-3,
+                       depMaxStr=.01,depThreshold=0.012,depTransWidth=0.008)
+
+
+Swimmers.SetIC(initial_conditions)
+
+lenn = int(np.sqrt(numb))
+pos = np.zeros((numb,2))
+vel = np.zeros((numb,2))
+CHEML = np.zeros((simTime,meshsize,meshsize)) #preallocate the chemical 
+POSL = np.zeros((simTime,numb,2)) #preallocate the chemical 
+
+#Place plankton down uniformly throughout the domain and give each a direction to travel initially
+#Randomness can be added if desired.
+i = 0
+for l in range(0,lenn):
+    for k in range(0,lenn):
+        pos[i,:] = np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
+                                     np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])
+        th  = np.random.rand()*2*pi
+        vel[i,:] = np.array([np.cos(th),np.sin(th)])
+        i = i + 1
+
+CHEML[0,:,:] = Swimmers.Meshed() 
+POSL[0,:,:] = pos 
+
+for k in range(1,simTime):
+    Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
+    CHEML[k,:,:] = Swimmers.Meshed()
+    POSL[k,:,:] = pos
+```
+
+## Figure 11a 
+
+This figure will show the total chemical over time. 
+
+```{python}
+#Find the total amount of chemcial for all simulations
+SUMC = np.zeros(len(CHEMC))
+SUMA = np.zeros(len(CHEMA))
+SUML = np.zeros(len(CHEML))
+for i in range(len(CHEMC)):
+    SUMC[i] = np.sum(CHEMC[i]*(Swimmers.L/meshsize)**2)
+    SUMA[i] = np.sum(CHEMA[i]*(Swimmers.L/meshsize)**2)
+    SUML[i] = np.sum(CHEML[i]*(Swimmers.L/meshsize)**2)
+```
+
+```{python}
+fig, ax = plt.subplots(figsize=(7,5),tight_layout=True)
+
+colors = ['#000000','#009E73','#D55E00'] 
+
+times = np.linspace(0,TotalTime,len(SUMC))
+
+ax.plot(times,SUMC,color=colors[0],linestyle = '--',linewidth=3,label=r'$f_1(c)$')
+ax.plot(times,SUMA,color=colors[1],linestyle = '-',linewidth=3,label=r'$f_2(c)$')
+ax.plot(times,SUML,color=colors[2],linestyle = ':',linewidth=3,label=r'$f_3(c)$')
+ax.legend(fontsize=19)
+ax.set_xlabel(r'Time, $t$',fontsize=20)
+ax.set_ylabel(r'Total Chemical, $C(t)$',fontsize=20)
+ax.set_title('Total Chemical Over Time',fontsize=20)
+ax.tick_params(labelsize=18)
+ax.locator_params(nbins=5,axis='both')
+ax.ticklabel_format(style='plain',axis='both')
+ax.set_xlim(0,TotalTime)
+#plt.savefig('../Final_Figures/Fig11a.png')
+```
+
+## Figure 11b
+
+This will show the chemical height, i.e. maximum-minimum, or $\max(c(t)) - \min(c(t))$. We include the inset for the first second to show the similarities at the outset. 
+
+```{python}
+fig, ax = plt.subplots(figsize=(7,5),tight_layout=True)
+
+colors = ['#000000','#009E73','#D55E00'] 
+
+times = np.linspace(0,300,len(SUMC))
+
+ax.plot(times,SUMC,color=colors[0],linestyle = '--',linewidth=2.8,label=r'$f_1(c)$')
+ax.plot(times,SUMA,color=colors[1],linestyle = '-',linewidth=2.8,label=r'$f_2(c)$')
+ax.plot(times,SUML,color=colors[2],linestyle = ':',linewidth=2.8,label=r'$f_3(c)$')
+ax.set_xlabel(r'Time, $t$',fontsize=20)
+ax.set_ylabel(r' $\max(c(t)) - \min(c(t))$',fontsize=20)
+ax.set_title('Difference in Chemical',fontsize=20)
+ax.tick_params(labelsize=18)
+ax.ticklabel_format(style='sci',axis='y',scilimits=(-2,-2),useMathText=True)
+ax.yaxis.get_offset_text().set_fontsize(18)
+ax.set_xlim(0,TotalTime)
+ax.legend(fontsize=18,bbox_to_anchor=(.97,.77),loc="upper right")
+
+axins = ax.inset_axes([0.05, 0.63, 0.28, 0.28])
+axins.plot(times,SUMC,color=colors[0],linestyle = '--',linewidth=2.8,label=r'$f_1(c)$')
+axins.plot(times,SUMA,color=colors[1],linestyle = '-',linewidth=2.8,label=r'$f_2(c)$')
+axins.plot(times,SUML,color=colors[2],linestyle = ':',linewidth=2.8,label=r'$f_3(c)$')
+
+
+# sub region of the original image
+x1, x2, y1, y2 = 0,2, 0,.005
+axins.set_xlim(x1, x2)
+axins.set_ylim(y1, y2)
+axins.tick_params(labelsize=11)
+axins.ticklabel_format(style='sci',axis='y',scilimits=(-3,-3),useMathText=True)
+ax.indicate_inset_zoom(axins)
+#plt.savefig('../Final_Figures/Fig11b.png')
+```
+
+## Figure 11c
+
+This figure will show the development of the Radial Distribution Function for each one of the deposition functions. The radial distribution function is defined as
+
+$$g(r) =   \frac{\ell^2}{N_p (N_p - 1)} \sum\limits_{i = 1}^{N_p}\sum\limits_{\substack{j=1 \\ j \neq i}}^{N_p} \delta\left(r - r_{ij} \right),$$
+
+where $N_p$ represents the total number of plankton in the system, $\ell$ represents the size of the domain, $\delta(x)$ represents the delta function, and $r_{ij} := \| \vec{x_i} - \vec{x_j} \|$ represents the Euclidean distance between plankton $i$ and $j$. To calculate $g(r)$ numerically at a specific time $t$, we calculate all distances $r_{ij}$, bin these distances into a histogram, and normalize with respect to the total number of distances calculated, i.e. 
+
+$$g(r) =   \frac{1}{d_{\text{uni}}(r)} \sum\limits_{i = 1}^{N_p}\sum\limits_{j=i}^{N_p} \delta\left(r - r_{ij} \right),$$
+
+where $d_{\text{uni}}(r) = \frac{4 \pi r \, dr \, N_p(N_p - 1)}{\ell^2}$ is the number of plankton we expect to be a distance $(r, r + dr)$ away from each other.  
+
+Since there are $N_p = 160,000$ plankton, we suggest computing the RDFs on an HPC if possible.
+
+```{python}
+def Calc_Dist(Pos,L,j):
+        #find distance of every particle from particle j using periodic boundary conditions
+        posx = Pos[:,0]
+        posy = Pos[:,1]
+        Dist0 = np.sqrt((posx[j] - posx)**2 + (posy[j] - posy)**2) #regular  
+        Dist1 = np.sqrt((posx[j]  - L - posx)**2 + (posy[j] - posy + L)**2) #topleft
+        Dist2 = np.sqrt((posx[j]  - posx)**2 + (posy[j] - posy + L)**2) #topcenter
+        Dist3 = np.sqrt((posx[j]  + L - posx)**2 + (posy[j] - posy + L)**2) #topright
+        Dist4 = np.sqrt((posx[j]  - L - posx)**2 + (posy[j] - posy)**2) #middleleft
+        Dist5 = np.sqrt((posx[j]  + L - posx)**2 + (posy[j] - posy)**2) #middleright
+        Dist6 = np.sqrt((posx[j]  - L - posx)**2 + (posy[j] - posy - L)**2) #bottomleft
+        Dist7 = np.sqrt((posx[j]  - posx)**2 + (posy[j] - posy - L)**2) #bottomcenter
+        Dist8 = np.sqrt((posx[j]  + L - posx)**2 + (posy[j] - posy - L)**2) #bottomright
+
+        TD = [Dist0,Dist1,Dist2,Dist3,Dist4,Dist5,Dist6,Dist7,Dist8]
+
+        return(np.asarray(TD).min(0)) #minimum values for all possible distances
+```
+
+```{python}
+fig, axs = plt.subplots(figsize = (6,30),nrows = 1, ncols = 5, sharey = 'row', sharex = 'row')
+
+Times = [15,75,150,225,285]
+colors = ['#000000','#009E73','#D55E00'] 
+linestyles = ['-',':','--']
+binsize = 500
+
+for i in range(len(Times)):
+    Ts = int(Times[i]*Swimmers.k)
+    PC = POSC[Ts] 
+    PA = POSA[Ts] 
+    PL = POSL[Ts] 
+    BinsC = np.zeros(binsize)
+    BinsA = np.zeros(binsize)
+    BinsL = np.zeros(binsize)
+
+    #Find distances and bin them into histograms
+    for j in range(numb):
+        #Constant Dep
+        Dists = np.delete(Calc_Dist(PC[j:,:],10,0),0,0)
+        FNC = np.histogram(Dists,bins=binsize,range=(0.00001,10),density=False)
+        BinsC += FNC[0]
+        
+        #Switch Dep
+        Dists = np.delete(Calc_Dist(PA[j:,:],10,0),0,0)
+        FN = np.histogram(Dists,bins=binsize,range=(0.00001,10),density=False)
+        BinsA += FNA[0]
+        
+        #Linear Switch Dep
+        Dists = np.delete(Calc_Dist(PL[j:,:],10,0),0,0)
+        FN = np.histogram(Dists,bins=binsize,range=(0.00001,10),density=False)
+        Bins: += FNL[0]
+        
+    Area = 2*numb*pi/(L**2)
+    d_uni = (FN[1][1]-FN[1][0])*Area*(numb - 1)/2*(FN[1][1:]+FN[1][:-1])/2
+    HistC = np.divide(BinsC,d_uni)
+    HistA = np.divide(BinsA,d_uni)
+    HistL = np.divide(BinsL,d_uni)
+    
+    #Only plot half of the domain due to periodic boundary conditions
+    Lengs = np.linspace(0,5,int(len(HistC)/2))
+    axs[i].plot(Lengs,HistC[:int(len(HistC)/2)],label='$f_1(c)$',color=colors[0],linestyle='-',linewidth=5)
+    axs[i].plot(Lengs,HistA[:int(len(HistA)/2)],label='$f_2(c)$',color=colors[1],linestyle=':',linewidth=5)
+    axs[i].plot(Lengs,HistL[:int(len(HistL)/2)],label='$f_3(c)$',color=colors[2],linestyle='--',linewidth=5)
+
+    axs[i].set_title(r'$t = {0}$'.format(Times[i]),fontsize=40,pad=1)
+    
+    #Plot g(r) = 1 for reference
+    axs[i].axhline(1,linestyle='--',linewidth=2,color='k',alpha=.5)
+    axs[i].legend(fontsize=23,loc=0)
+    axs[i].tick_params(which='both',labelsize=25,direction='in',length=13)
+    axs[i].locator_params(nbins=5,axis='x')
+    axs[i].locator_params(nbins=4,axis='y')
+    axs[i].set_xlabel(r'$r$',fontsize=40)
+    axs[i].set_xlim(0,5)
+    axs[i].set_ylim(0.7,2)
+    
+axs[0].set_ylabel(r'$g(r)$',fontsize=40)
+#plt.savefig('../Final_Figures/Fig11c.png')
 ```

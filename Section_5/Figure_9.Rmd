@@ -76,7 +76,7 @@ meshsize = 100 #Chemical Mesh size
 numb = 400**2 #Number of plankton in simulation
 LL = 10 #Length of domain [0,L] x [0,L]
 dt = 0.02 #Time-stepping size
-TotalTime = 20 #Total time 
+TotalTime = 8 #Total time 
 simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
 
 Swimmers = PS.Plankton(DP.constantDep,d1=.1,d2=4,N = meshsize,depMaxStr=.01,
@@ -122,135 +122,12 @@ for k in range(1,simTime):
 ```
 
 ```{python}
-fig, axs = plt.subplots(nrows=3, ncols=5,figsize=(32,18),sharey='row')
-Times = [0,.2,3,8,19.999]
+fig, axs = plt.subplots(nrows=3, ncols=5,figsize=(32,18),sharey='row',sharex='row')
+Times = [0,.3,1,3,8]
 fig.subplots_adjust(right=1)
 fig.subplots_adjust(hspace=0.22, wspace=0.13)
-
 #Plot Plankton
-j = int(Times[0]/Swimmers.k)
-xm, ym, ContoursSlice = PM.PartProj(Swimmers,POS[j],400)
-cs1 = axs[0,0].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
-cs1.set_clim(3,5)
-axs[0,0].ticklabel_format(style='plain',axis='x')
-axs[0,0].locator_params(nbins=3,axis='x')
-axs[0,0].locator_params(nbins=3,axis='y')
-axs[0,0].tick_params(labelsize=22)
-axs[0,0].set_ylabel(r'$y$',size=27)
-axs[0,0].set_xlabel(r'$x$',size=27)
-
-j = int(Times[1]/Swimmers.k)
-xm, ym, ContoursSlice = PM.PartProj(Swimmers,POS[j],400)
-cs1 = axs[0,1].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
-cs1.set_clim(3,5)
-axs[0,1].ticklabel_format(style='plain',axis='x')
-axs[0,1].locator_params(nbins=3,axis='x')
-axs[0,1].locator_params(nbins=3,axis='y')
-axs[0,1].tick_params(labelsize=22)
-axs[0,1].set_xlabel(r'$x$',size=27)
-
-j = int(Times[2]/Swimmers.k)
-xm, ym, ContoursSlice = PM.PartProj(Swimmers,POS[j],400)
-cs1 = axs[0,2].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
-cs1.set_clim(3,5)
-axs[0,2].ticklabel_format(style='plain',axis='x')
-axs[0,2].locator_params(nbins=3,axis='x')
-axs[0,2].locator_params(nbins=3,axis='y')
-axs[0,2].tick_params(labelsize=22)
-axs[0,2].set_xlabel(r'$x$',size=27)
-
-j = int(Times[3]/Swimmers.k)
-xm, ym, ContoursSlice = PM.PartProj(Swimmers,POS[j],400)
-cs1 = axs[0,3].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
-cs1.set_clim(3,5)
-axs[0,3].ticklabel_format(style='plain',axis='x')
-axs[0,3].locator_params(nbins=3,axis='x')
-axs[0,3].locator_params(nbins=3,axis='y')
-axs[0,3].tick_params(labelsize=22)
-axs[0,3].set_xlabel(r'$x$',size=27)
-
-j = int(Times[4]/Swimmers.k)
-xm, ym, ContoursSlice = PM.PartProj(Swimmers,POS[j],400)
-cs1 = axs[0,4].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
-cs1.set_clim(3,5)
-axs[0,4].ticklabel_format(style='plain',axis='x')
-axs[0,4].locator_params(nbins=3,axis='x')
-axs[0,4].locator_params(nbins=3,axis='y')
-axs[0,4].tick_params(labelsize=22)
-axs[0,4].set_xlabel(r'$x$',size=27)
-
-cbar2 = fig.colorbar(cs1,ticks = [3,4,5],
-                    ax=axs[0].ravel().tolist(),location='right',pad=0.01,shrink=0.8)
-cbar2.update_ticks()
-cbar2.ax.tick_params(labelsize=25)
-cbar2.set_label(r'Plankton, $\rho$',size=30)
-cbar2.ax.set_yticklabels([r'$3\overline{\rho}/4$',r'$\overline{\rho}$',r'$5\overline{\rho}/4$'])
-
-#Plot Chemical
-
-L = 0.0025
-j = int(Times[0]/Swimmers.k)
-cs1 = axs[1,0].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,PM.BuildPeriodic(Swimmers,CHEM[j]),cmap='Blues')
-cs1.set_clim(0.01-L,0.01+L)
-axs[1,0].ticklabel_format(style='plain',axis='x')
-axs[0,0].set_title(r'$t = {0}$',fontsize=40)
-axs[1,0].locator_params(nbins=3,axis='x')
-axs[1,0].locator_params(nbins=3,axis='y')
-axs[1,0].tick_params(labelsize=22)
-axs[1,0].set_ylabel(r'$y$',size=27)
-axs[1,0].set_xlabel(r'$x$',size=27)
-
-j = int(Times[1]/Swimmers.k)
-cs = axs[1,1].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,PM.BuildPeriodic(Swimmers,CHEM[j]),cmap='Blues')
-cs.set_clim(0.01-L,0.01+L)
-axs[1,1].ticklabel_format(style='plain',axis='x')
-axs[0,1].set_title(r'$t = {0}$'.format(round(j*Swimmers.k,3)),fontsize=40)
-axs[1,1].locator_params(nbins=3,axis='x')
-axs[1,1].locator_params(nbins=3,axis='y')
-axs[1,1].tick_params(labelsize=22)
-axs[1,1].set_xlabel(r'$x$',size=27)
-
-j = int(Times[2]/Swimmers.k)
-cs = axs[1,2].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,PM.BuildPeriodic(Swimmers,CHEM[j]),cmap='Blues')
-cs.set_clim(0.01-L,0.01+L)
-axs[1,2].ticklabel_format(style='plain',axis='x')
-axs[0,2].set_title(r'$t = {0}$'.format(round(j*Swimmers.k)),fontsize=40)
-axs[1,2].locator_params(nbins=3,axis='x')
-axs[1,2].locator_params(nbins=3,axis='y')
-axs[1,2].tick_params(labelsize=22)
-axs[1,2].set_xlabel(r'$x$',size=27)
-
-j = int(Times[3]/Swimmers.k)
-cs = axs[1,3].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,PM.BuildPeriodic(Swimmers,CHEM[j]),cmap='Blues')
-cs.set_clim(0.01-L,0.01+L)
-axs[1,3].ticklabel_format(style='plain',axis='x')
-axs[0,3].set_title(r'$t = {0}$'.format(round(j*Swimmers.k)),fontsize=40)
-axs[1,3].locator_params(nbins=3,axis='x')
-axs[1,3].locator_params(nbins=3,axis='y')
-axs[1,3].tick_params(labelsize=22)
-axs[1,3].set_xlabel(r'$x$',size=27)
-
-j = int(Times[4]/Swimmers.k)
-cs2 = axs[1,4].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,PM.BuildPeriodic(Swimmers,CHEM[j]),cmap='Blues')
-cs2.set_clim(0.01-L,0.01+L)
-axs[1,4].ticklabel_format(style='plain',axis='x')
-axs[0,4].set_title(r'$t = {0}$'.format(round(j*Swimmers.k)),fontsize=40)
-axs[1,4].locator_params(nbins=3,axis='x')
-axs[1,4].locator_params(nbins=3,axis='y')
-axs[1,4].tick_params(labelsize=22)
-axs[1,4].set_xlabel(r'$x$',size=27)
-
-cbar = fig.colorbar(cs2,ticks = [0.008,0.01,0.012],
-                    ax=axs[1].ravel().tolist(),location='right',pad=0.01,shrink=0.8)
-cbar.set_ticks([0.008,0.01,0.012])
-cbar.update_ticks()
-cbar.ax.tick_params(labelsize=25)
-cbar.ax.set_yticklabels([r'$4\overline{c}/5$',r'$\overline{c}$',r'$6\overline{c}/5$'])
-cbar.set_label(r'Chemical, $c$',size=30)
-
-from numpy.fft import fftfreq, fftshift, fft2
-
-#Plot Fourier Domaindef xy(r,phi):
+L = 0.005
 def xy(r,phi):
     return r*np.cos(phi), r*np.sin(phi)
 
@@ -261,92 +138,76 @@ r = 6.096
 
 freq = (len(Swimmers.xm)*2*pi/(Swimmers.L))*fftfreq(len(Swimmers.xm))
 
-j = int(Times[0]/Swimmers.k)
-omega = np.fft.fft2(CHEM[j])
-field = axs[2,0].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq), 
-                            np.real(np.fft.fftshift(omega)),cmap='Greens')
-flat=np.real(np.fft.fftshift(omega)).flatten()
-flat.sort()
-field.set_clim(0,flat[-1])
-axs[2,0].set_ylim(-15,15)
-axs[2,0].set_xlim(-15,15)
-axs[2,0].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
-axs[2,0].locator_params(nbins=3,axis='x')
-axs[2,0].locator_params(nbins=3,axis='y')
-axs[2,0].tick_params(labelsize=22)
-axs[2,0].set_ylabel(r'$k_2$',size=27,labelpad=-14)
-axs[2,0].set_xlabel(r'$k_1$',size=27)
+for m in range(len(Times)):
+    j = int(Times[m]/Swimmers.k)
+    
+    #Plankton
+    xm, ym, ContoursSlice = PM.PartProj(POS[j],400)
+    csp = axs[0,m].pcolormesh(xm,ym,ContoursSlice,cmap='Reds')
+    csp.set_clim(2,6)
+    axs[0,m].ticklabel_format(style='plain',axis='x')
+    axs[0,m].locator_params(nbins=3,axis='x')
+    axs[0,m].locator_params(nbins=3,axis='y')
+    axs[0,m].tick_params(labelsize=22)
+    axs[0,m].set_xlabel(r'$x$',size=27)
+    axs[0,m].set_title(r'$t = {0}$'.format(round(j*Swimmers.k,1)),fontsize=40)
+    
+    #Chemical
+    csc = axs[1,m].pcolormesh(Swimmers.xm_periodic,Swimmers.ym_periodic,BuildPeriodic(CHEM[j]),cmap='Blues')
+    csc.set_clim(0.01-L,0.01+L)
+    axs[1,m].ticklabel_format(style='plain',axis='x')
+    axs[1,m].locator_params(nbins=3,axis='x')
+    axs[1,m].locator_params(nbins=3,axis='y')
+    axs[1,m].tick_params(labelsize=22)
+    axs[1,m].set_xlabel(r'$x$',size=27)
 
-j = int(Times[1]/Swimmers.k)
-omega = np.fft.fft2(CHEM[j])
-field = axs[2,1].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq), 
-                            np.real(np.fft.fftshift(omega)),cmap='Greens')
-flat=np.real(np.fft.fftshift(omega)).flatten()
-flat.sort()
-field.set_clim(0,flat[-2])
-axs[2,1].set_ylim(-15,15)
-axs[2,1].set_xlim(-15,15)
-axs[2,1].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
-axs[2,1].locator_params(nbins=3,axis='x')
-axs[2,1].locator_params(nbins=3,axis='y')
-axs[2,1].tick_params(labelsize=22)
-axs[2,1].set_xlabel(r'$k_1$',size=27)
+    #FFT
+    omega = np.fft.fft2(CHEM[j])
+    field = axs[2,m].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq),
+                                np.real(np.fft.fftshift(omega)),cmap='Greens')
+    flat = np.real(np.fft.fftshift(omega)).flatten()
+    flat.sort()
+    if (m == 0):
+        field.set_clim(0,flat[-1])
+    else:
+        field.set_clim(0,flat[-2])
+    axs[2,m].set_ylim(-15,15)
+    axs[2,m].set_xlim(-15,15)
+    axs[2,m].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
+    axs[2,m].locator_params(nbins=3,axis='x')
+    axs[2,m].locator_params(nbins=3,axis='y')
+    axs[2,m].tick_params(labelsize=22)
+    axs[2,m].set_xlabel(r'$k_1$',size=27)
 
-j = int(Times[2]/Swimmers.k)
-omega = np.fft.fft2(CHEM[j])
-field = axs[2,2].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq), 
-                            np.real(np.fft.fftshift(omega)),cmap='Greens')
-flat=np.real(np.fft.fftshift(omega)).flatten()
-flat.sort()
-field.set_clim(0,flat[-2])
-axs[2,2].set_ylim(-15,15)
-axs[2,2].set_xlim(-15,15)
-axs[2,2].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
-axs[2,2].locator_params(nbins=3,axis='x')
-axs[2,2].locator_params(nbins=3,axis='y')
-axs[2,2].tick_params(labelsize=22)
-axs[2,2].set_xlabel(r'$k_1$',size=27)
+    if (m == 0):
+        axs[0,m].set_ylabel(r'$y$',size=27)
+        axs[1,m].set_ylabel(r'$y$',size=27)
+        axs[2,0].set_ylabel(r'$k_2$',size=27,labelpad=-14)
 
-j = int(Times[3]/Swimmers.k)
-omega = np.fft.fft2(CHEM[j])
-field = axs[2,3].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq), 
-                            np.real(np.fft.fftshift(omega)),cmap='Greens')
-flat=np.real(np.fft.fftshift(omega)).flatten()
-flat.sort()
-field.set_clim(0,flat[-2])
-axs[2,3].set_ylim(-15,15)
-axs[2,3].set_xlim(-15,15)
-axs[2,3].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
-axs[2,3].locator_params(nbins=3,axis='x')
-axs[2,3].locator_params(nbins=3,axis='y')
-axs[2,3].tick_params(labelsize=22)
-axs[2,3].set_xlabel(r'$k_1$',size=27)
 
-j = int(Times[4]/Swimmers.k)
-omega = np.fft.fft2(CHEM[j])
-field = axs[2,4].pcolormesh(np.fft.fftshift(freq),np.fft.fftshift(freq),
-                            np.real(np.fft.fftshift(omega)),cmap='Greens')
-flat=np.real(np.fft.fftshift(omega)).flatten()
-flat.sort()
-field.set_clim(0,flat[-2])
-axs[2,4].set_ylim(-15,15)
-axs[2,4].set_xlim(-15,15)
-axs[2,4].plot( *xy(r,phis), c='k',ls='--',linewidth=2)
-axs[2,4].locator_params(nbins=3,axis='x')
-axs[2,4].locator_params(nbins=3,axis='y')
-axs[2,4].tick_params(labelsize=22)
-axs[2,4].set_xlabel(r'$k_1$',size=27)
-cbar = fig.colorbar(field,ticks = [0,flat[-2]],
+    if (m == len(Times)-1):
+        cbarp = fig.colorbar(csp,ticks = [2,4,6],
+                    ax=axs[0].ravel().tolist(),location='right',pad=0.01,shrink=0.8)
+        cbarp.update_ticks()
+        cbarp.ax.tick_params(labelsize=25)
+        cbarp.set_label(r'Plankton, $\rho$',size=30)
+        cbarp.ax.set_yticklabels([r'$\overline{\rho}/2$',r'$\overline{\rho}$',r'$3\overline{\rho}/2$'])
+        
+        cbarc = fig.colorbar(csc,ticks = [0.005,0.01,0.015],
+                    ax=axs[1].ravel().tolist(),location='right',pad=0.01,shrink=0.8)
+        cbarc.set_ticks([0.005,0.01,0.015])
+        cbarc.update_ticks()
+        cbarc.ax.tick_params(labelsize=25)
+        cbarc.ax.set_yticklabels([r'$\overline{c}/2$',r'$\overline{c}$',r'$3\overline{c}/2$'])
+        cbarc.set_label(r'Chemical, $c$',size=30)
+
+        cbarf = fig.colorbar(field,ticks = [0,flat[-2]],
                     ax=axs[2].ravel().tolist(),location='right',pad=0.01,shrink=0.8)
-cbar.set_ticks([0,flat[-2]])
-cbar.update_ticks()
-cbar.ax.tick_params(labelsize=25)
-cbar.ax.set_yticklabels([r'$0$',r'Max'])
-cbar.set_label(r'$\widetilde{E}(\mathbf{k})$',size=32)
+        cbarf.set_ticks([0,flat[-2]])
+        cbarf.update_ticks()
+        cbarf.ax.tick_params(labelsize=25)
+        cbarf.ax.set_yticklabels([r'$0$',r'Max'])
+        cbarf.set_label(r'$\widetilde{E}(\mathbf{k})$',size=32)
+plt.savefig('../Final_Figures/Fig9.png',format=png)
 plt.show()
-#plt.savefig('../Final_Figures/Fig9')
-```
-
-```{python}
-
 ```

@@ -181,7 +181,7 @@ class Plankton(Background_Field):
     def RT(self,pos,vel,c,grad_c):
         # Actually, I need to do this as tumble and run, TR.
         for j in range(0,len(pos)):
-            alpha = 1/(self.delta + sqrt(dot(grad_c[j],grad_c[j])*dot(vel[j],vel[j])))
+            alpha = 1/np.sqrt(self.delta**2 + dot(grad_c[j],vel[j]))
             if (rand() < self.k*0.5*(1-alpha*dot(vel[j],grad_c[j]))):
                 th = rand()*2*pi
                 vel[j] = array([cos(th),sin(th)])

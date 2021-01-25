@@ -1,0 +1,158 @@
+---
+jupyter:
+  jupytext:
+    text_representation:
+      extension: .Rmd
+      format_name: rmarkdown
+      format_version: '1.2'
+      jupytext_version: 1.4.2
+  kernelspec:
+    display_name: Python 3
+    language: python
+    name: python3
+---
+
+```{python}
+from scipy import *
+import numpy as np
+import matplotlib.pyplot as plt
+import PlanktonSignaling.basics as PS
+import PlanktonSignaling.Deposition as DP
+import PlanktonSignaling.PlottingMethods as PM
+import profile
+# %matplotlib notebook
+
+# #%load_ext Cython
+```
+
+# Figure 12
+
+This will show the evolution of a 2D simulation for varying $\delta$ values. The code to produce those files is shown below. The simulations will take over 24 hours, so we sugest utilizing an HPC to replicate these.
+
+See the file for Figure 9 for inputs and the paper for the description of the simulation. 
+
+```{python}
+deltas = [1e-3,1e-4,1e-5,1e-6]
+meshsize = 400 #Chemical Mesh size
+numb = 400**2 #Number of plankton in simulation
+lenn = int(np.sqrt(numb))
+LL = 10 #Length of domain [0,L] x [0,L]
+dt = 0.02 #Time-stepping size
+TotalTime = 1500 #Total time 
+simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
+
+Planks = np.zeros((4,meshsize,meshsize))
+
+for i in range(len(deltas)):
+    Swimmers = PS.Plankton(DP.constantDep,L=LL,k=dt,d1=.1,d2=4,
+                           N = meshsize, num = numb, c0=0.01,Const=3,delta=deltas[i],
+                           depMaxStr=.01,depThreshold=0.012,depTransWidth=0.008)
+
+    Swimmers.SetIC(initial_conditions)
+
+    pos = np.zeros((numb,2))
+    vel = np.zeros((numb,2))
+    CHEM = np.zeros((simTime,meshsize,meshsize)) #preallocate the chemical 
+    POS = np.zeros((simTime,numb,2)) #preallocate the chemical 
+
+    #Place plankton down uniformly throughout the domain and give each a direction to travel initially
+    #Randomness can be added if desired.
+    i = 0
+    for l in range(0,lenn):
+        for k in range(0,lenn):
+            pos[i,:] = np.array([np.mod(k*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L),
+                                         np.mod(l*(Swimmers.L*1/(lenn)) + 0.5*(Swimmers.L*1/(lenn)),Swimmers.L)])
+            th  = np.random.rand()*2*pi
+            vel[i,:] = np.array([np.cos(th),np.sin(th)])
+            i = i + 1
+
+    CHEM[0,:,:] = Swimmers.Meshed() 
+    POS[0,:,:] = pos
+    
+    for k in range(1,simTime):
+        Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
+        CHEM[k,:,:] = Swimmers.Meshed()
+        POS[k,:,:] = pos
+    
+    xm, ym, ContoursSlice = PM.PartProj(Swimmers,POS[-1],400)
+    Planks[i,:,:] = ContoursSlice
+```
+
+### Figure 11a
+
+This plots the final timestep for all of the deltas. You should note that as delta decreases, the peaks should get much more steep. 
+
+```{python}
+fig, axs = plt.subplots(nrows=1, ncols=4,figsize=(24,4.5), sharey='row',sharex='col')
+fig.subplots_adjust(hspace=0.16, wspace=0.1)
+cmaps = 'Greys'
+Low = 0.3
+High = 1.7
+
+#htc = np.load('./Data/PosDensFT{0}_.npy')
+
+xm, ym, Contours = PM.PartProj(Swimmers,Planks[0],400)
+cs = axs[0].pcolormesh(xm,ym,Contours,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0].set_title(r'$\delta = 10^{-3}$',fontsize=40)
+axs[0].set_ylabel(r'$y$',fontsize=30)
+
+xm, ym, Contours = PM.PartProj(Swimmers,Planks[1],400)
+cs = axs[1].pcolormesh(xm,ym,Contours,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[1].set_title(r'$\delta = 10^{-4}$',fontsize=40)
+
+xm, ym, Contours = PM.PartProj(Swimmers,Planks[2],400)
+cs = axs[2].pcolormesh(xm,ym,Contours,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[2].set_title(r'$\delta = 10^{-5}$',fontsize=40)
+
+xm, ym, Contours = PM.PartProj(Swimmers,Planks[3],400)
+cs = axs[3].pcolormesh(xm,ym,Contours,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[3].set_title(r'$\delta = 10^{-6}$',fontsize=40)
+
+for i in range(0,4):
+    axs[i].set_xlabel(r'$x$',fontsize=40)
+    axs[i].tick_params(labelsize=25)
+    axs[i].locator_params(nbins=3,axis='x')
+    axs[i].locator_params(nbins=3,axis='y')
+    axs[i].ticklabel_format(style='plain',axis='x')
+    
+cbar2 = fig.colorbar(cs,ticks = [.5,1,1.5],
+                    ax=axs.ravel().tolist(),location='right',pad=0.01,shrink=0.8)
+cbar2.update_ticks()
+cbar2.ax.tick_params(labelsize=25)
+cbar2.set_label(r'Plankton, $\rho$',size=30)
+cbar2.ax.set_yticklabels([r'$\overline{\rho}/2$',r'$\overline{\rho}$',r'$3\overline{\rho}/2$'])
+plt.savefig('../Final_Figures/Fig11a.png')
+```
+
+### Figure 11b
+
+This plots the function $S_{150}$ for all of the deltas (see Fig. 10). You should note that as delta decreases, the histograms should become more skewed right. 
+
+```{python}
+# %matplotlib notebook
+
+plt.figure(figsize=(7,5),tight_layout=True)
+colors = ['#D55E00','#000000','#882255','#009E73']
+linestyles = ['-', '--', '-.', ':']
+delts = [3,4,5,6]
+i = 0
+n=49
+for j in range(0,len(deltas)):
+    ht,xs = np.histogram(Planks[j].flatten(),bins=100,range=(0,2.25),density=True)
+    plt.plot((xs[1:]+xs[:-1])/2,ht,label=r'$\delta = 10^{{{}}}$'.format(-1*delts[i]),color=colors[i],
+             linestyle=linestyles[i],linewidth=2.4)
+    i = i + 1
+plt.xticks([.5,1.0,1.5,2.0],[r'$\overline{\rho}/2$',r'$\overline{\rho}$',r'$3\overline{\rho}/2$',r'$2\overline{\rho}$'],fontsize=18)
+plt.yticks([0,0.5,1,1.5],fontsize=18)
+plt.ylim(-.1,1.3)
+plt.xlim(0,2.25)
+plt.xlabel(r'Plankton Density',fontsize=24)
+plt.ylabel(r'$S_{150}$',fontsize=28)
+plt.title(r'Probability Density Function, $S_{150}$',fontsize=20)
+plt.legend(fontsize=18,loc=0)
+plt.show()
+```

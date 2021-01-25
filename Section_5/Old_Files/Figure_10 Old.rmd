@@ -29,12 +29,14 @@ from numpy.fft import fftfreq, fftshift, fft2
 
 # Figure 10
 
-This will show the evolution of a 2D simulation for varying deposition functions. The code to produce those files is shown below. The simulations will take days to complete, so we sugest utilizing an HPC to replicate these.
+This will show the evolution of a 2D simulation for varying deposition functions. The code to produce those files is shown below. The simulations will take over 24 hours, so we sugest utilizing an HPC to replicate these.
 
 See the file for Figure 9 for inputs and the paper for the description of the simulation. 
 
 
-### Constant Deposition Function
+## Plot Figure 10a
+
+This shows the evolution of plankton from a constant deposition function 
 
 ```{python}
 meshsize = 400 #Chemical Mesh size
@@ -70,13 +72,68 @@ for l in range(0,lenn):
 
 CHEMC[0,:,:] = Swimmers.Meshed() 
 POSC[0,:,:] = pos 
+```
+
+```{python}
 for k in range(1,simTime):
     Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
     CHEMC[k,:,:] = Swimmers.Meshed()
     POSC[k,:,:] = pos
 ```
 
-### Switch Deposition Function
+```{python}
+# %matplotlib notebook
+
+#Times you would like to plot
+times = [0,2,20,71,149.99]
+fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(30,6),tight_layout=True, sharey='row',sharex='col')
+fig.subplots_adjust(hspace=0.13, wspace=0.13)
+cmaps = 'Greys'
+Low = 0.75
+High = 1.25
+
+j = int(times[0]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[0].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0].set_ylabel(r'$y$',fontsize=40)
+
+j = int(times[1]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[1].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+j = int(times[2]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[2].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+
+j = int(times[3]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[3].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+j = int(times[4]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSC[j],400)
+cs = axs[4].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+for i in range(0,5):
+    axs[i].set_xlabel(r'$x$',fontsize=40)
+    axs[i].tick_params(labelsize=27)
+    axs[i].locator_params(nbins=3,axis='x')
+    axs[i].locator_params(nbins=3,axis='y')
+    axs[i].ticklabel_format(style='plain',axis='x')
+    axs[i].set_title(r'$t = {0}$'.format(int(times[i])),fontsize=40)
+
+
+#plt.savefig('../Final_Figures/Fig10a.png')
+```
+
+## Plot Figure 10b
+
+This shows the evolution of plankton from a switch deposition function 
 
 ```{python}
 meshsize = 400 #Chemical Mesh size
@@ -114,13 +171,68 @@ for l in range(0,lenn):
 
 CHEMA[0,:,:] = Swimmers.Meshed() 
 POSA[0,:,:] = pos 
+```
+
+```{python}
 for k in range(1,simTime):
     Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
     CHEMA[k,:,:] = Swimmers.Meshed()
     POSA[k,:,:] = pos
 ```
 
-### Linear Switch Function
+```{python}
+# %matplotlib notebook
+
+#Times you would like to plot
+times = [0,2,20,71,149.99]
+fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(30,6),tight_layout=True, sharey='row',sharex='col')
+fig.subplots_adjust(hspace=0.13, wspace=0.13)
+cmaps = 'Greys'
+Low = 0.75
+High = 1.25
+
+j = int(times[0]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[0].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0].set_ylabel(r'$y$',fontsize=40)
+
+j = int(times[1]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[1].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+j = int(times[2]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[2].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+
+j = int(times[3]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[3].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+j = int(times[4]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSA[j],400)
+cs = axs[4].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+for i in range(0,5):
+    axs[i].set_xlabel(r'$x$',fontsize=40)
+    axs[i].tick_params(labelsize=27)
+    axs[i].locator_params(nbins=3,axis='x')
+    axs[i].locator_params(nbins=3,axis='y')
+    axs[i].ticklabel_format(style='plain',axis='x')
+    axs[i].set_title(r'$t = {0}$'.format(int(times[i])),fontsize=40)
+
+
+#plt.savefig('../Final_Figures/Fig10b.png')
+```
+
+## Plot Figure 10c
+
+This shows the evolution of plankton from a linear switch deposition function 
 
 ```{python}
 meshsize = 400 #Chemical Mesh size
@@ -158,65 +270,85 @@ for l in range(0,lenn):
 
 CHEML[0,:,:] = Swimmers.Meshed() 
 POSL[0,:,:] = pos 
+```
 
+```{python}
 for k in range(1,simTime):
     Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
     CHEML[k,:,:] = Swimmers.Meshed()
     POSL[k,:,:] = pos
 ```
 
-### Plot the Figure
+```{python}
+# %matplotlib notebook
+
+#Times you would like to plot
+times = [0,2,20,71,149.99]
+fig, axs = plt.subplots(nrows=1, ncols=5,figsize=(30,6),tight_layout=True, sharey='row',sharex='col')
+fig.subplots_adjust(hspace=0.13, wspace=0.13)
+cmaps = 'Greys'
+Low = 0.75
+High = 1.25
+
+j = int(times[0]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[0].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+axs[0].set_ylabel(r'$y$',fontsize=40)
+
+j = int(times[1]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[1].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+j = int(times[2]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[2].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+
+j = int(times[3]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[3].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+j = int(times[4]/Swimmers.k)
+xm, ym, ContoursSlice = PM.PartProj(Swimmers,POSL[j],400)
+cs = axs[4].pcolormesh(xm,ym,ContoursSlice,cmap=cmaps)
+cs.set_clim(Low,High)
+
+for i in range(0,5):
+    axs[i].set_xlabel(r'$x$',fontsize=40)
+    axs[i].tick_params(labelsize=27)
+    axs[i].locator_params(nbins=3,axis='x')
+    axs[i].locator_params(nbins=3,axis='y')
+    axs[i].ticklabel_format(style='plain',axis='x')
+    axs[i].set_title(r'$t = {0}$'.format(int(times[i])),fontsize=40)
+
+
+#plt.savefig('../Final_Figures/Fig10c.png')
+```
+
+## Figure 10d
+
+Plotting the colorbar used for all simulations here.
 
 ```{python}
-fig, axs = plt.subplots(figsize = (24,18),nrows = 3, ncols = 5, sharey = 'row', sharex = 'row')
-fig.subplots_adjust(right=1)
-fig.subplots_adjust(hspace=0.13, wspace=0.13)
-params = {'legend.fontsize': 15,'legend.framealpha':1}
-plt.rcParams.update(params)
-cmaps = ['Greys','Greens','Oranges']
-Low = .5
-High = 2.0
-Times = [15,75,150,225,285]
-Deps = ['C','A','L']
-for i in range(len(Times)):
-    T = int(Times[i]*Swimmers.k)
-    #Constant Dep
-    xm, ym, PC = PartProj(POSC[T],400)
-    csc = axs[0,i].pcolormesh(xm,ym,PC,cmap=cmaps[0])
-    csc.set_clim(Low,High)
-    
-    #Switch Dep
-    xm, ym, PA = PartProj(POSA[T],400)
-    csa = axs[1,i].pcolormesh(xm,ym,PA,cmap=cmaps[1])
-    csa.set_clim(Low,High)
-    
-    #Linear Switch Dep
-    xm, ym, PL = PartProj(POSL[T],400)
-    csl = axs[2,i].pcolormesh(xm,ym,PL,cmap=cmaps[2])
-    csl.set_clim(Low,High)
-    
-    axs[0,i].set_title(r'$t = {0}$'.format(Times[i]),fontsize=40,pad=1)
-    axs[2,i].set_xlabel(r'$x$'.format(Times[i]),fontsize=40)
+import matplotlib as mpl
+fig, ax = plt.subplots(figsize=(10, 2))
+fig.subplots_adjust(bottom=0.5)
 
-    for j in range(3):
-        axs[j,i].tick_params(which='both',labelsize=25,direction='in')
-        axs[j,i].locator_params(nbins=3,axis='x')
-        axs[j,i].locator_params(nbins=3,axis='y')
-        axs[j,i].set_xlim(0,10)
-        axs[j,i].set_ylim(0,10)
-        axs[j,0].set_ylabel(r'$f_{0}(c)$'.format(j+1),fontsize=40,rotation=0)
-        axs[j,0].yaxis.set_label_coords(-0.2,.42)
-        if (i == len(Times)-1):
-            cbar = fig.colorbar(cs,ticks = [.5,1,1.5,2],
-                    ax=axs[j].ravel().tolist(),location='right',pad=0.01,shrink=0.8,alpha=.3)
-            cbar.set_ticks([.5,1,1.5,2])
-            cbar.update_ticks()
-            cbar.ax.tick_params(labelsize=25)
-            cbar.ax.set_yticklabels([r'$\overline{\rho}/2$',r'$\overline{\rho}$',
-                                     r'$3\overline{\rho}/2$',r'$2\overline{\rho}$'])
-            cbar.set_label(r'Plankton, $\rho$',size=30)
+cmap = 'Greys'
+norm = mpl.colors.Normalize(vmin=0, vmax=1)
 
-#plt.savefig('../Final_Figures/Fig10.png')
+cb = fig.colorbar(mpl.cm.ScalarMappable(norm=norm, cmap=cmap),ticks=[0,0.5,1],
+             cax=ax, orientation='horizontal')
+
+cb.ax.tick_params(labelsize=25)
+cb.set_label(r'Plankton, $\rho$',size=30)
+
+cb.ax.set_xticklabels([r'$3\overline{\rho}/4$',r'$\overline{\rho}$',r'$5\overline{\rho}/4$'])
+plt.savefig('../Final_Figures/Fig10d')
 ```
 
 ## Figure 10e
