@@ -20,6 +20,8 @@ import PlanktonSignaling.basics as PS
 import PlanktonSignaling.Deposition as DP
 import PlanktonSignaling.PlottingMethods as PM
 import profile
+from scipy.signal import savgol_filter
+from scipy.stats import binned_statistic
 # %matplotlib notebook
 
 # #%load_ext Cython
@@ -27,7 +29,7 @@ import profile
 
 # Figure 12
 
-This will show the evolution of a 2D simulation for varying $\delta$ values. The code to produce those files is shown below. The simulations will take over 24 hours, so we sugest utilizing an HPC to replicate these.
+This will show the differences between varied $\delta$ values. The code to produce those files is shown below. The simulations will take over 24 hours, so we sugest utilizing an HPC to replicate these.
 
 See the file for Figure 9 for inputs and the paper for the description of the simulation. 
 
@@ -38,15 +40,18 @@ numb = 400**2 #Number of plankton in simulation
 lenn = int(np.sqrt(numb))
 LL = 10 #Length of domain [0,L] x [0,L]
 dt = 0.02 #Time-stepping size
-TotalTime = 1500 #Total time 
+TotalTime = 300 #Total time 
 simTime = int(TotalTime/dt) #Number of timesteps in order to achieve total Time 
 
 Planks = np.zeros((4,meshsize,meshsize))
+Chems = np.zeros((4,meshsize,meshsize))
+TotChems = np.zeros((4,simTime))
+
 
 for i in range(len(deltas)):
-    Swimmers = PS.Plankton(DP.constantDep,L=LL,k=dt,d1=.1,d2=4,
+    Swimmers = PS.Plankton(DP.atanDep,L=LL,k=dt,d1=.1,d2=4,
                            N = meshsize, num = numb, c0=0.01,Const=3,delta=deltas[i],
-                           depMaxStr=.01,depThreshold=0.012,depTransWidth=0.008)
+                           depMaxStr=.01,depThreshold=0.012,depTransWidth=0.0007)
 
     Swimmers.SetIC(initial_conditions)
 
@@ -68,91 +73,91 @@ for i in range(len(deltas)):
 
     CHEM[0,:,:] = Swimmers.Meshed() 
     POS[0,:,:] = pos
-    
+    TotChems[i,0] = np.sum(CHEM[0].flatten()*(Swimmers.L/meshsize)**2)
     for k in range(1,simTime):
         Swimmers.UpdateSlice(Swimmers.scalar,pos,vel)
         CHEM[k,:,:] = Swimmers.Meshed()
         POS[k,:,:] = pos
+        TotChems[i,k] = np.sum(CHEM[k].flatten()*(Swimmers.L/meshsize)**2)
     
     xm, ym, ContoursSlice = PM.PartProj(Swimmers,POS[-1],400)
     Planks[i,:,:] = ContoursSlice
+    Chems[i,:,:] = CHEM[-1]
 ```
 
-### Figure 11a
+### Figure 12a
 
-This plots the final timestep for all of the deltas. You should note that as delta decreases, the peaks should get much more steep. 
+This shows the total chemical over time for the varied $\delta$.
 
 ```{python}
-fig, axs = plt.subplots(nrows=1, ncols=4,figsize=(24,4.5), sharey='row',sharex='col')
-fig.subplots_adjust(hspace=0.16, wspace=0.1)
-cmaps = 'Greys'
-Low = 0.3
-High = 1.7
+fig, ax = plt.subplots(figsize=(7,5),tight_layout=True)
+colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000'] #Using IBM Colorblind Scheme 
+markers = ['o','p','s','^','D']
+linstyles = ['-','--',':','-.']
 
-#htc = np.load('./Data/PosDensFT{0}_.npy')
-
-xm, ym, Contours = PM.PartProj(Swimmers,Planks[0],400)
-cs = axs[0].pcolormesh(xm,ym,Contours,cmap=cmaps)
-cs.set_clim(Low,High)
-axs[0].set_title(r'$\delta = 10^{-3}$',fontsize=40)
-axs[0].set_ylabel(r'$y$',fontsize=30)
-
-xm, ym, Contours = PM.PartProj(Swimmers,Planks[1],400)
-cs = axs[1].pcolormesh(xm,ym,Contours,cmap=cmaps)
-cs.set_clim(Low,High)
-axs[1].set_title(r'$\delta = 10^{-4}$',fontsize=40)
-
-xm, ym, Contours = PM.PartProj(Swimmers,Planks[2],400)
-cs = axs[2].pcolormesh(xm,ym,Contours,cmap=cmaps)
-cs.set_clim(Low,High)
-axs[2].set_title(r'$\delta = 10^{-5}$',fontsize=40)
-
-xm, ym, Contours = PM.PartProj(Swimmers,Planks[3],400)
-cs = axs[3].pcolormesh(xm,ym,Contours,cmap=cmaps)
-cs.set_clim(Low,High)
-axs[3].set_title(r'$\delta = 10^{-6}$',fontsize=40)
-
-for i in range(0,4):
-    axs[i].set_xlabel(r'$x$',fontsize=40)
-    axs[i].tick_params(labelsize=25)
-    axs[i].locator_params(nbins=3,axis='x')
-    axs[i].locator_params(nbins=3,axis='y')
-    axs[i].ticklabel_format(style='plain',axis='x')
+for j in range(len(deltas)):
+    SUN = savgol_filter(TotChems[i,:],255,5)
+    times = np.linspace(0,TotalTime,len(SUML1))
+    ax.plot(times,SUN,color=colors[j],
+                linestyle =linstyles[j],linewidth=3,
+                label=r'$\delta = 10^{{{}}}$'.format(-(j+3)))
     
-cbar2 = fig.colorbar(cs,ticks = [.5,1,1.5],
-                    ax=axs.ravel().tolist(),location='right',pad=0.01,shrink=0.8)
-cbar2.update_ticks()
-cbar2.ax.tick_params(labelsize=25)
-cbar2.set_label(r'Plankton, $\rho$',size=30)
-cbar2.ax.set_yticklabels([r'$\overline{\rho}/2$',r'$\overline{\rho}$',r'$3\overline{\rho}/2$'])
-plt.savefig('../Final_Figures/Fig11a.png')
+ax.set_ylabel(r'$C(t)$',fontsize=20)
+ax.set_title('Total Chemical',fontsize=20)
+ax.legend(fontsize=19,loc=0)
+ax.set_xlabel(r'Time, $t$',fontsize=20)
+ax.tick_params(labelsize=18)
+ax.set_xlim(0,TotalTime)
+
+#plt.savefig('../FinalFigures/Fig12b.png')
 ```
 
-### Figure 11b
+### Figure 12b
 
-This plots the function $S_{150}$ for all of the deltas (see Fig. 10). You should note that as delta decreases, the histograms should become more skewed right. 
+This plots the mean value of the magnitude of the chemical graident, $\left \langle |\nabla c | \right \rangle$ with respect to the total plankton density, $\rho$.  
 
 ```{python}
-# %matplotlib notebook
+colors = ['#648FFF','#785EF0','#DC267F','#FE6100','#FFB000'] #Using IBM Colorblind Scheme 
 
-plt.figure(figsize=(7,5),tight_layout=True)
-colors = ['#D55E00','#000000','#882255','#009E73']
-linestyles = ['-', '--', '-.', ':']
-delts = [3,4,5,6]
-i = 0
-n=49
-for j in range(0,len(deltas)):
-    ht,xs = np.histogram(Planks[j].flatten(),bins=100,range=(0,2.25),density=True)
-    plt.plot((xs[1:]+xs[:-1])/2,ht,label=r'$\delta = 10^{{{}}}$'.format(-1*delts[i]),color=colors[i],
-             linestyle=linestyles[i],linewidth=2.4)
-    i = i + 1
-plt.xticks([.5,1.0,1.5,2.0],[r'$\overline{\rho}/2$',r'$\overline{\rho}$',r'$3\overline{\rho}/2$',r'$2\overline{\rho}$'],fontsize=18)
-plt.yticks([0,0.5,1,1.5],fontsize=18)
-plt.ylim(-.1,1.3)
-plt.xlim(0,2.25)
-plt.xlabel(r'Plankton Density',fontsize=24)
-plt.ylabel(r'$S_{150}$',fontsize=28)
-plt.title(r'Probability Density Function, $S_{150}$',fontsize=20)
-plt.legend(fontsize=18,loc=0)
-plt.show()
+binss = 250
+m = .9
+fig, ax = plt.subplots(figsize=(7,5),tight_layout=True)
+
+for Job in range(len(Delts)):
+    
+    Poss = Planks[Job].flatten()
+    Load = np.gradient(Chems[Job],10/400)
+    Gradd = np.sqrt(np.multiply(Load[0],Load[0])+np.multiply(Load[1],Load[1])).flatten()
+
+    bin_means, xs, binnumber = binned_statistic(Poss,Gradd,statistic='mean',range=(1-m,1+m),bins=binss)
+    bin_std, xs, binnumber = binned_statistic(Poss,Gradd,statistic='std',range=(1-m,1+m),bins=binss)
+                                          
+    where_are_NaNs = np.isnan(bin_means)
+    bin_means[where_are_NaNs] = 0
+    where_are_NaNs2 = np.isnan(bin_std)
+    bin_std[where_are_NaNs2] = 0
+    xs = (xs[1:] + xs[:-1])/2
+    ax.plot(xs,bin_means,color=colors[Job],
+                    linestyle =linstyles[Job],linewidth=3,
+                label=r'$\delta = 10^{{{}}}$'.format(-Delts[Job]))
+
+    ax.fill_between(xs,bin_means-bin_std,bin_means+bin_std,color=colors[Job],alpha=.15)
+
+    
+ax.set_ylabel(r'Chemical Gradient, $\left \langle | \nabla c | \right \rangle$',fontsize=16)
+ax.set_xlabel(r'Plankton Density, $\rho$',fontsize=20)
+ax.tick_params(labelsize=18)
+ax.legend(fontsize=19,loc=0)
+ax.ticklabel_format(style='sci',axis='y',scilimits=(-3,-2),useMathText=True)
+ax.yaxis.get_offset_text().set_fontsize(18)
+ax.locator_params(nbins=3,axis='y')
+ax.set_xlim(1-m,1+m)
+ax.set_xticks([.5,1,1.5])
+ax.set_xticklabels([r'$\overline{\rho}/2$',r'$\overline{\rho}$',r'$3\overline{\rho}/2$'])
+ax.axhline(1e-3,linestyle='--',color='k',alpha=0.5)
+ax.axhline(1e-4,linestyle='--',color='k',alpha=0.5)
+ax.set_title(r'$\rho$ vs. $\left \langle | \nabla c | \right \rangle$ at $t = {0}$'.format(T),fontsize=20)
+
+
+#plt.savefig('../FinalFigures/Fig12b.png')
 ```
